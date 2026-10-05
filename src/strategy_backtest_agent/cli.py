@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import json
+import sys
 from datetime import UTC, datetime, timedelta
 
 from pydantic import ValidationError
@@ -17,7 +18,13 @@ def _percent(value: float | None) -> str:
     return "N/A" if value is None else f"{value:+.2f}%"
 
 
-async def _run(config: BacktestConfig, days: int, demo: bool, as_json: bool) -> None:
+async def _run(
+    config: BacktestConfig,
+    days: int,
+    demo: bool,
+    as_json: bool,
+    ai_context: dict[str, object] | None = None,
+) -> None:
     end = datetime.now(UTC)
     candles = (
         demo_candles(config.timeframe, days)
@@ -47,6 +54,8 @@ async def _run(config: BacktestConfig, days: int, demo: bool, as_json: bool) -> 
             },
             **result.model_dump(mode="json"),
         }
+        if ai_context is not None:
+            payload = {**ai_context, "backtest_result": payload}
         print(json.dumps(payload, allow_nan=False))
         return
     print("Strategy Backtest\n" + "─" * 32)
@@ -72,7 +81,13 @@ async def _run(config: BacktestConfig, days: int, demo: bool, as_json: bool) -> 
 
 def main() -> None:
     """Validate CLI input and run a single historical backtest."""
-    parser = argparse.ArgumentParser(description="Backtest a long-only RSI strategy")
+    if sys.argv[1:2] == ["ai"]:
+        _ai_main()
+        return
+    parser = argparse.ArgumentParser(
+        description="Backtest a long-only RSI strategy",
+        epilog='Natural language: strategy-backtest ai "Backtest BTCUSDT" [--json]',
+    )
     parser.add_argument("--symbol", default="BTCUSDT", help="Uppercase provider symbol (BTCUSDT)")
     parser.add_argument(
         "--timeframe", choices=TIMEFRAMES, default="1h", help="Candle interval (1h)"
@@ -129,6 +144,44 @@ def main() -> None:
         )
         parser.exit(2, f"Error: {messages}\n")
     except (ValueError, OverflowError, MarketDataError) as exc:
+        parser.exit(2, f"Error: {exc}\n")
+
+
+def _ai_main() -> None:
+    """Parse natural language before invoking the existing historical execution path."""
+    from strategy_backtest_agent.ai.parser import StrategyParseError, parse_strategy
+
+    parser = argparse.ArgumentParser(
+        prog="strategy-backtest ai", description="Parse a long-only RSI request"
+    )
+    parser.add_argument(
+        "text", help="Natural-language historical backtest request (one quoted argument)"
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit input, parsed_strategy, and backtest_result as JSON",
+    )
+    args = parser.parse_args(sys.argv[2:])
+    try:
+        parsed = parse_strategy(args.text)
+        context: dict[str, object] = {
+            "input": args.text,
+            "parsed_strategy": parsed.model_dump(mode="json"),
+        }
+        if not args.json:
+            print("AI Strategy\n" + "─" * 32)
+            print(f"Input:\n{args.text}\n\nParsed Configuration:")
+            print(f"Symbol: {parsed.symbol}\nTimeframe: {parsed.timeframe}")
+            print(f"Period: {parsed.period_days} days\nBalance: {parsed.initial_balance:,.2f}")
+            print(f"RSI Period: {parsed.strategy.period}")
+            print(f"Entry RSI: < {parsed.strategy.entry_below:g}")
+            print(f"Exit RSI: > {parsed.strategy.exit_above:g}\nFee: {parsed.fee * 100:g}%")
+            print("\nRunning backtest...\n")
+        asyncio.run(
+            _run(parsed.to_backtest_config(), parsed.period_days, False, args.json, context)
+        )
+    except (StrategyParseError, MarketDataError, ValueError, OverflowError) as exc:
         parser.exit(2, f"Error: {exc}\n")
 
 
