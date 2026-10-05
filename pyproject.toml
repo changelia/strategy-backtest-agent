@@ -16,6 +16,7 @@ python = "^3.12"
 pandas = "^2.2"
 httpx = "^0.28"
 pydantic = "^2.10"
+openai = "^3.24.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3"
