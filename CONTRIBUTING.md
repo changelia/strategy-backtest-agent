@@ -19,4 +19,6 @@ execution and mathematical consistency between fees, PnL, and portfolio balances
 Keep providers separate from the engine and add useful public type hints. Update
 README commands when behavior changes. Commit poetry.lock with dependency changes.
 Never commit credentials, local environment files, caches, or generated artifacts.
-Discuss larger features in an issue before implementation; the AI parser is future work.
+AI tests must mock the OpenAI boundary and run without an API key. Keep SDK imports
+inside the AI package; parsing must never calculate financial results. Discuss larger
+features in an issue before implementation.

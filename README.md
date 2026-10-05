@@ -5,8 +5,11 @@
 Strategy Backtest Agent is an early-stage open-source Python project for
 backtesting rule-based trading strategies against historical market data.
 
-Version 0.1.0 is a deterministic, long-only RSI MVP. The AI strategy parser is
-planned but **not implemented**. No API keys or environment variables are required.
+The v0.1.0 deterministic, long-only RSI engine is extended by Phase 2:
+**natural language → RSI strategy configuration**. It does not support arbitrary
+natural-language strategies. OpenAI only extracts configuration; all indicators,
+trades, fees, and performance results are calculated by Python. The existing
+explicit-options CLI and offline demo need no API key. AI mode requires an OpenAI key.
 
 ## Features
 
@@ -16,6 +19,7 @@ planned but **not implemented**. No API keys or environment variables are requir
 - Entry and exit fees, equity drawdown, and buy-and-hold comparison
 - Terminal and machine-readable JSON results
 - Deterministic offline demo and network-free unit tests
+- Optional OpenAI structured parsing for single-symbol, long-only RSI requests
 
 ## Architecture
 
@@ -39,16 +43,18 @@ Modules under `src/strategy_backtest_agent/` correspond to these stages:
 The engine accepts candles directly and has no HTTP dependency. Only RSI is currently
 an executable strategy; SMA and EMA are available as indicators.
 
-**FUTURE WORK — not implemented:**
+**Phase 2 AI input path:**
 
 ```text
 Natural Language
     ↓
-AI Strategy Parser
+OpenAI Strategy Parser
     ↓
-Validated Strategy Config
+Pydantic Validation
     ↓
-Backtest Engine
+Deterministic Backtest Engine
+    ↓
+Backtest Result
 ```
 
 ## Installation
@@ -74,6 +80,82 @@ and a 0.2-second pause between pages. HTTP failures, malformed data, and insuffi
 completed history produce readable errors and exit code 2. Rate-limit responses stop
 the run without retries and report the provider's Retry-After header when available.
 No private API credentials or trading endpoints are used.
+
+## Natural Language Backtesting
+
+Install dependencies with `poetry install`, then export your credentials locally:
+
+```bash
+export OPENAI_API_KEY="your_openai_api_key_here"
+export OPENAI_MODEL="gpt-6-luna"
+poetry run strategy-backtest ai --help
+poetry run strategy-backtest ai "Backtest BTCUSDT for 30 days"
+poetry run strategy-backtest ai "Backtest ETHUSDT on 4h for 180 days using RSI 25/75" --json
+poetry run strategy-backtest ai "Backtest BTCUSDT with RSI period 10, buy below 25 and sell above 65"
+```
+
+`.env.example` contains placeholders only. `.env` is ignored; files are **not loaded
+automatically**. Set environment variables in your shell. `OPENAI_MODEL` is optional,
+with one application default: `gpt-6-luna`. The chosen model must support Responses
+and Structured Outputs and be accessible to your API account. AI requests incur
+OpenAI API usage charges and send the request text to OpenAI; do not include secrets.
+No credentials or raw SDK responses are printed or saved by the application.
+
+The official OpenAI Python SDK uses Responses `responses.parse` with a Pydantic
+extraction schema. Omitted values are returned as null and defaults are applied in
+Python, followed by strict Pydantic validation and conversion to the existing
+`BacktestConfig`. Only the AI package imports the SDK. The parser has no tools,
+market prices, or access to trading/brokerage accounts. It does not calculate
+profitability or generate trading results.
+
+| AI field | Default | Allowed values |
+| --- | --- | --- |
+| symbol | required | Explicit uppercase alphanumeric provider symbol, 5–20 characters |
+| timeframe | 1h | Same intervals as the existing CLI |
+| period_days | 30 | Integer, 1–365 |
+| initial_balance | 10000 | Positive finite quote-currency cash |
+| fee | 0.001 | Fraction per side, 0–0.05 (maximum 5%) |
+| strategy.type | rsi | Long-only RSI only |
+| strategy.period | 14 | Integer, 2–200 |
+| strategy.entry_below | 30 | Strictly between 0 and 100, below exit threshold |
+| strategy.exit_above | 70 | Strictly between 0 and 100, above entry threshold |
+
+AI's default range is 30 days; the original explicit-options CLI keeps its 180-day
+default. `RSI 25/75` means buy strictly below 25 and sell strictly above 75. A stated
+fee of `0.1%` means `0.001`. Missing symbol/quote currency is not guessed: write
+`BTCUSDT`, not just `Bitcoin`. Explicit invalid values are not replaced with defaults.
+
+Unsupported requests fail rather than silently becoming RSI: MACD, Bollinger Bands,
+short selling, leverage, stop loss, take profit, multiple indicators, AND/OR strategy
+rules, portfolios/multiple symbols, live trading, and price predictions. Contradictory
+or ambiguous requests also fail. A conservative early keyword check rejects explicit
+unsupported concepts (including negated mentions); structured AI rejection handles
+remaining semantics. Natural-language interpretation can still be wrong even when
+schema validation succeeds; review the displayed configuration before relying on results.
+
+Terminal mode displays the input and parsed configuration before requesting historical
+data and calculating results. `--json` prints one object with `input`, `parsed_strategy`,
+and `backtest_result`; the result contains the same deterministic metrics/trades and
+market-data metadata as the original JSON output. It never includes prompts or raw
+SDK responses. JSON-mode errors go to stderr with exit code 2 and no result object.
+Missing/invalid keys, model access errors, rate limits, timeouts, refusals, malformed
+output, validation errors, and market-data failures produce concise errors. OpenAI
+requests have a 30-second timeout, no automatic retries, and `store=False`.
+
+Manual integration checks (not run by pytest or CI; require a real exported key):
+
+```bash
+poetry run strategy-backtest ai "Backtest BTCUSDT on 1h for 30 days. Buy when RSI is below 30 and sell when RSI is above 70."
+poetry run strategy-backtest ai "Backtest ETHUSDT on 4h for 90 days using RSI 25/75" --json
+poetry run strategy-backtest ai "Short BTCUSDT with 10x leverage using MACD"
+```
+
+The last command must exit with an unsupported-strategy error and never run a backtest.
+For a parser-only manual check without market-data fetching:
+
+```bash
+poetry run python -c 'from strategy_backtest_agent.ai.parser import parse_strategy; print(parse_strategy("Backtest BTCUSDT").model_dump_json(indent=2))'
+```
 
 ## Offline Demo
 
@@ -214,7 +296,8 @@ All tests are deterministic and offline. Mocked HTTP tests cover pagination beyo
 1,000 candles, incomplete candles, malformed/empty responses, timeouts and rate limits.
 Engine tests cover indicators, signals, next-open execution, no look-ahead, both fees,
 PnL reconciliation, forced closing, drawdown, benchmark, and metric edge cases.
-CLI tests cover validation, JSON and the offline demo. Live runs are manual checks;
+CLI tests cover validation, JSON and the offline demo. AI tests use mocked SDK HTTP
+responses and a mocked CLI parser/provider; no OpenAI key is needed. Live runs are manual checks;
 CI never depends on an exchange being online.
 
 ## Code Quality
@@ -240,8 +323,8 @@ and pull_request with cached dependencies and no secrets. See [CONTRIBUTING.md](
 - [x] CLI
 - [x] JSON output
 - [x] Tests
-- [ ] Natural-language strategies
-- [ ] AI strategy parser
+- [x] Natural-language RSI configuration
+- [x] AI strategy parser (RSI only)
 - [ ] Multiple strategy conditions
 - [ ] MACD
 - [ ] Bollinger Bands
@@ -265,7 +348,8 @@ and pull_request with cached dependencies and no secrets. See [CONTRIBUTING.md](
 
 ## Disclaimer
 
-This is educational/research software, not financial advice. Do not use simulated
+This is educational/research software, not financial advice. Natural-language parsing
+does not make this a trading recommendation system. Do not use simulated
 results as the sole basis for investment decisions.
 
 ## License
