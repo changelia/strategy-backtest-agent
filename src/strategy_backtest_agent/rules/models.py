@@ -1,6 +1,6 @@
 """Closed, typed rule language; no executable expressions."""
 
-from typing import Annotated, Literal
+from typing import Literal
 
 from pydantic import Field, model_validator
 
@@ -13,7 +13,7 @@ class Price(Model):
 
 class Value(Model):
     type: Literal["value"] = "value"
-    value: float
+    value: float = Field(strict=True)
 
 
 class Indicator(Model):
@@ -28,7 +28,7 @@ class Indicator(Model):
         return self
 
 
-Operand = Annotated[Price | Value | Indicator, Field(discriminator="type")]
+Operand = Price | Value | Indicator
 
 
 class Comparison(Model):
@@ -43,7 +43,7 @@ class Group(Model):
     conditions: list["Rule"] = Field(min_length=1, max_length=20)
 
 
-Rule = Annotated[Comparison | Group, Field(discriminator="type")]
+Rule = Comparison | Group
 Group.model_rebuild()
 
 

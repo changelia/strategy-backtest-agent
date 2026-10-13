@@ -24,7 +24,7 @@ def run_backtest(
     if strategy is None:
         strategy = legacy_rules(config)
     if strategy is not None:
-        strategy = RuleStrategy.model_validate(strategy.model_dump())
+        strategy = RuleStrategy.model_validate(strategy.model_dump(warnings=False))
     context = prepare_indicators(candles, strategy) if strategy is not None else None
     signals = rsi_signals(candles, config) if strategy is None else []
     cash = config.initial_balance
