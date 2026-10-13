@@ -94,12 +94,15 @@ def run_comparison(
             )
         )
     # Hash all initialization and evaluation data so revisions to provider history are detectable.
-    encoded = json.dumps(
-        [c.model_dump(mode="json") for c in candles],
-        sort_keys=True,
-        separators=(",", ":"),
-        allow_nan=False,
-    ).encode()
+    digest = hashlib.sha256()
+    for candle in candles:
+        encoded = json.dumps(
+            candle.model_dump(mode="json"),
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode()
+        digest.update(encoded + b"\n")
     shared = SharedData(
         source=data_source,
         evaluation_start=start,
@@ -114,7 +117,7 @@ def run_comparison(
             Indicator.model_validate({"name": name, "period": period})
             for name, period in sorted(keys)
         ],
-        candles_sha256=hashlib.sha256(encoded).hexdigest(),
+        candles_sha256=digest.hexdigest(),
     )
     return ComparisonResult(
         configuration=resolved_config,
