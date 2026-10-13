@@ -2,8 +2,9 @@
 
 from typing import Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import AwareDatetime, Field, field_validator, model_validator
 
+from strategy_backtest_agent.comparison.models import ComparisonConfig, RankingCriterion
 from strategy_backtest_agent.market_data import TIMEFRAMES
 from strategy_backtest_agent.models import BacktestConfig
 from strategy_backtest_agent.models import RSIStrategy as RSIStrategy
@@ -87,6 +88,51 @@ class ParserOutput(StrictModel):
 
     @model_validator(mode="after")
     def one_outcome(self) -> "ParserOutput":
+        if (self.configuration is None) == (self.rejection is None):
+            raise ValueError("parser must return either configuration or rejection")
+        return self
+
+
+class ComparisonStrategyExtraction(StrictModel):
+    name: str
+    strategy: RuleStrategy
+
+
+class ComparisonExtraction(StrictModel):
+    symbol: str | None
+    timeframe: str | None
+    period_days: int | None
+    initial_balance: float | None
+    fee: float | None
+    strategies: list[ComparisonStrategyExtraction] = Field(min_length=2, max_length=5)
+    evaluation_end: AwareDatetime | None
+    sort_by: RankingCriterion | None
+
+    def validated_config(self) -> ComparisonConfig:
+        values = self.model_dump(exclude_none=True)
+        # IDs represent request order and are assigned by Python, not invented by the model.
+        values["strategies"] = [
+            {"id": f"strategy-{i}", **item.model_dump()}
+            for i, item in enumerate(self.strategies, start=1)
+        ]
+        return ComparisonConfig.model_validate(values)
+
+
+class ComparisonParserOutput(StrictModel):
+    configuration: ComparisonExtraction | None
+    rejection: (
+        Literal[
+            "unsupported",
+            "ambiguous",
+            "missing_symbol",
+            "inconsistent_settings",
+            "strategy_count",
+        ]
+        | None
+    )
+
+    @model_validator(mode="after")
+    def one_outcome(self) -> "ComparisonParserOutput":
         if (self.configuration is None) == (self.rejection is None):
             raise ValueError("parser must return either configuration or rejection")
         return self

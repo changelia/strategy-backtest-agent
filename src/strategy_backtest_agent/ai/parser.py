@@ -2,6 +2,8 @@
 
 import os
 import re
+from collections.abc import Callable
+from typing import TypeVar
 
 from openai import (
     APIConnectionError,
@@ -12,10 +14,15 @@ from openai import (
     OpenAIError,
     RateLimitError,
 )
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
-from strategy_backtest_agent.ai.models import AIStrategyConfig, ParserOutput
-from strategy_backtest_agent.ai.prompts import SYSTEM_PROMPT
+from strategy_backtest_agent.ai.models import (
+    AIStrategyConfig,
+    ComparisonParserOutput,
+    ParserOutput,
+)
+from strategy_backtest_agent.ai.prompts import COMPARISON_PROMPT, SYSTEM_PROMPT
+from strategy_backtest_agent.comparison.models import ComparisonConfig
 
 DEFAULT_MODEL = "gpt-6-luna"
 
@@ -30,7 +37,7 @@ _UNSUPPORTED = (
     (r"\bmacd\b", "MACD"),
     (r"\bbollinger\b", "Bollinger Bands"),
     (r"\bleverage\b|\b\d+(?:\.\d+)?\s*x\b", "leverage"),
-    (r"\bshort(?:[- ]selling|\s+position)?\b", "short selling"),
+    (r"\bshort(?:s|[- ]selling|\s+position)?\b", "short selling"),
     (r"\bstop[- ]?loss\b", "stop loss"),
     (r"\btake[- ]?profit\b", "take profit"),
     (
@@ -51,8 +58,52 @@ def create_client() -> OpenAI:
     return OpenAI(api_key=key, base_url="https://api.openai.com/v1", timeout=30, max_retries=0)
 
 
+OutputT = TypeVar("OutputT", bound=BaseModel)
+ConfigT = TypeVar("ConfigT", AIStrategyConfig, ComparisonConfig)
+
+
+def _strategy_configuration(output: ParserOutput) -> AIStrategyConfig:
+    if output.rejection is not None:
+        raise StrategyParseError(
+            f"Request rejected: {output.rejection.replace('_', ' ')}. "
+            "Currently supported: long-only RSI, SMA, EMA level rules"
+        )
+    assert output.configuration is not None
+    return output.configuration.validated_config()
+
+
+def _comparison_configuration(output: ComparisonParserOutput) -> ComparisonConfig:
+    if output.rejection is not None:
+        raise StrategyParseError(f"Request rejected: {output.rejection.replace('_', ' ')}")
+    assert output.configuration is not None
+    return output.configuration.validated_config()
+
+
 def parse_strategy(text: str) -> AIStrategyConfig:
-    """Extract a supported request and apply deterministic defaults and validation."""
+    """Extract a supported single-strategy request with the existing defaults."""
+    return _parse_request(text, ParserOutput, SYSTEM_PROMPT, _strategy_configuration)
+
+
+def parse_comparison(text: str) -> ComparisonConfig:
+    """One structured request for all comparison rules and shared settings."""
+    return _parse_request(
+        text,
+        ComparisonParserOutput,
+        COMPARISON_PROMPT,
+        _comparison_configuration,
+        max_output_tokens=16384,
+    )
+
+
+def _parse_request(
+    text: str,
+    schema: type[OutputT],
+    instructions: str,
+    convert: Callable[[OutputT], ConfigT],
+    *,
+    max_output_tokens: int = 4096,
+) -> ConfigT:
+    """Shared SDK boundary, unsupported checks, validation and sanitized errors."""
     if not text.strip():
         raise StrategyParseError("request must not be empty")
     if len(text) > 8000:
@@ -70,10 +121,10 @@ def parse_strategy(text: str) -> AIStrategyConfig:
         with create_client() as client:
             response = client.responses.parse(
                 model=model,
-                instructions=SYSTEM_PROMPT,
+                instructions=instructions,
                 input=text,
-                text_format=ParserOutput,
-                max_output_tokens=4096,
+                text_format=schema,
+                max_output_tokens=max_output_tokens,
                 store=False,
             )
         if response.status != "completed" or response.output_parsed is None:
@@ -81,15 +132,8 @@ def parse_strategy(text: str) -> AIStrategyConfig:
                 "AI did not return a complete structured strategy (or refused)"
             )
         # Revalidate even an SDK model instance; constructed objects must not bypass validation.
-        output = ParserOutput.model_validate(response.output_parsed.model_dump())
-        if output.rejection is not None:
-            label = output.rejection.replace("_", " ")
-            raise StrategyParseError(
-                f"Request rejected: {label}. "
-                "Currently supported: long-only RSI, SMA, EMA level rules"
-            )
-        assert output.configuration is not None
-        configuration = output.configuration.validated_config()
+        output = schema.model_validate(response.output_parsed.model_dump(warnings=False))
+        configuration = convert(output)
         if not re.search(
             rf"(?<![A-Za-z0-9]){re.escape(configuration.symbol)}(?![A-Za-z0-9])",
             text,
