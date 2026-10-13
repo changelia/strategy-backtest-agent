@@ -5,9 +5,8 @@
 Strategy Backtest Agent is an early-stage open-source Python project for
 backtesting rule-based trading strategies against historical market data.
 
-The v0.1.0 deterministic, long-only RSI engine is extended by Phase 2:
-**natural language → RSI strategy configuration**. It does not support arbitrary
-natural-language strategies. OpenAI only extracts configuration; all indicators,
+The deterministic long-only engine now supports a validated Strategy DSL:
+**natural language → RSI/SMA/EMA rules → deterministic execution**. OpenAI only extracts configuration; all indicators,
 trades, fees, and performance results are calculated by Python. The existing
 explicit-options CLI and offline demo need no API key. AI mode requires an OpenAI key.
 
@@ -19,7 +18,7 @@ explicit-options CLI and offline demo need no API key. AI mode requires an OpenA
 - Entry and exit fees, equity drawdown, and buy-and-hold comparison
 - Terminal and machine-readable JSON results
 - Deterministic offline demo and network-free unit tests
-- Optional OpenAI structured parsing for single-symbol, long-only RSI requests
+- Optional OpenAI structured parsing for single-symbol, long-only boolean rule requests
 
 ## Architecture
 
@@ -40,19 +39,24 @@ CLI / JSON
 Modules under `src/strategy_backtest_agent/` correspond to these stages:
 `market_data.py`, `indicators.py`, `strategy.py`, `backtester.py`, `metrics.py`,
 `cli.py`. `models.py` validates inputs/results; `demo.py` generates synthetic candles.
-The engine accepts candles directly and has no HTTP dependency. Only RSI is currently
-an executable strategy; SMA and EMA are available as indicators.
+The engine accepts candles directly and has no HTTP dependency. `rules/` contains
+validated models, cached indicator preparation, boolean evaluation, formatting, and
+historical boundary handling. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
-**Phase 2 AI input path:**
+**AI input path:**
 
 ```text
 Natural Language
     ↓
 OpenAI Strategy Parser
     ↓
-Pydantic Validation
+Validated Strategy DSL
     ↓
-Deterministic Backtest Engine
+Cached Indicator Preparation
+    ↓
+Deterministic Rule Engine
+    ↓
+Existing Backtest Engine
     ↓
 Backtest Result
 ```
@@ -115,7 +119,7 @@ profitability or generate trading results.
 | period_days | 30 | Integer, 1–365 |
 | initial_balance | 10000 | Positive finite quote-currency cash |
 | fee | 0.001 | Fraction per side, 0–0.05 (maximum 5%) |
-| strategy.type | rsi | Long-only RSI only |
+| strategy.type | rsi | Legacy RSI or explicit `rules` |
 | strategy.period | 14 | Integer, 2–200 |
 | strategy.entry_below | 30 | Strictly between 0 and 100, below exit threshold |
 | strategy.exit_above | 70 | Strictly between 0 and 100, above entry threshold |
@@ -126,8 +130,8 @@ fee of `0.1%` means `0.001`. Missing symbol/quote currency is not guessed: write
 `BTCUSDT`, not just `Bitcoin`. Explicit invalid values are not replaced with defaults.
 
 Unsupported requests fail rather than silently becoming RSI: MACD, Bollinger Bands,
-short selling, leverage, stop loss, take profit, multiple indicators, AND/OR strategy
-rules, portfolios/multiple symbols, live trading, and price predictions. Contradictory
+short selling, leverage, stop loss, take profit, crossover/crossunder events, NOT,
+portfolios/multiple symbols, live trading, and price predictions. Contradictory
 or ambiguous requests also fail. A conservative early keyword check rejects explicit
 unsupported concepts (including negated mentions); structured AI rejection handles
 remaining semantics. Natural-language interpretation can still be wrong even when
@@ -156,6 +160,108 @@ For a parser-only manual check without market-data fetching:
 ```bash
 poetry run python -c 'from strategy_backtest_agent.ai.parser import parse_strategy; print(parse_strategy("Backtest BTCUSDT").model_dump_json(indent=2))'
 ```
+
+## Strategy DSL and compound strategies
+
+```bash
+poetry run strategy-backtest ai 'Backtest BTCUSDT on 1h for 90 days. Buy when RSI < 30 and price > EMA 200. Sell when RSI > 70 or price < EMA 50.'
+poetry run strategy-backtest ai 'Backtest ETHUSDT on 4h for 90 days. Buy when SMA 20 > SMA 50. Sell when SMA 20 < SMA 50.'
+poetry run strategy-backtest ai 'Backtest BTCUSDT. Buy when RSI < 30 and price > EMA 200. Sell when RSI > 70.' --json
+```
+
+Operands are completed candle close (`price`), finite numeric constants (`value`),
+and `indicator` with name `rsi`, `sma`, or `ema` and an integer period.
+RSI periods are 2–500; SMA/EMA periods are 2–1000. Comparisons are `<`, `<=`, `>`,
+and `>=`, including indicator-to-indicator comparisons. `and`/`or` groups have at
+least one child and can nest. A strategy has at most 20 comparisons across entry
+and exit and depth at most 5, counting each root as depth 1. Unknown fields, types,
+operators, nonfinite numbers and unsupported features fail validation in Python.
+
+Example internal DSL (serializable with `RuleStrategy.model_dump_json()`):
+
+```json
+{
+  "type": "rules",
+  "entry": {
+    "type": "and",
+    "conditions": [
+      {"type": "comparison", "left": {"type": "indicator", "name": "rsi", "period": 14}, "operator": "<", "right": {"type": "value", "value": 30}},
+      {"type": "comparison", "left": {"type": "price"}, "operator": ">", "right": {"type": "indicator", "name": "ema", "period": 200}}
+    ]
+  },
+  "exit": {"type": "comparison", "left": {"type": "indicator", "name": "rsi", "period": 14}, "operator": ">", "right": {"type": "value", "value": 70}}
+}
+```
+
+Python callers can validate dictionaries using `RuleStrategy.model_validate` and
+call `run_backtest(candles, config, strategy, evaluation_start=prior_candle_count)`.
+`evaluation_start` indexes the first evaluation candle in the combined history.
+Fetching prior history is the caller's responsibility outside the CLI.
+Unique `(name, period)` dependencies are calculated once per run using the existing
+indicator functions. No HTTP or AI calls occur during rule evaluation. An unavailable
+or nonfinite operand makes its comparison false; OR can still succeed through another
+valid comparison. NOT is unsupported. Open positions evaluate exit; flat portfolios
+evaluate entry. At most one action executes at each next open.
+
+`SMA 20 > SMA 50` is a level comparison. `SMA 20 crosses above SMA 50` is a transition
+and is rejected. The parser uses the official Responses SDK with recursive typed
+Structured Outputs, then independently validates the entire tree in Python. It
+never produces or executes code. Clearly parenthesized nested expressions are
+supported; ambiguity is rejected. RSI's omitted period defaults to 14; SMA/EMA
+periods must be explicit. Legacy RSI extraction and its existing defaults remain.
+
+Terminal summaries use deterministic Python formatting with parentheses around
+boolean groups. Rule JSON preserves `input`, `parsed_strategy`, and `backtest_result`.
+The result includes `strategy`, unique `indicator_configuration`, `trading_fee`,
+and `evaluation_period` with requested UTC start/end, actual prior candle count,
+required prior count and EMA policy. Existing start/end and candle count fields refer
+only to evaluation candles. No progress messages appear on JSON stdout.
+
+### Historical warm-up policy
+
+For explicit DSL strategies, take the maximum prior history requirement across all
+referenced indicators:
+
+| Indicator | Prior completed candles requested |
+| --- | --- |
+| RSI(p) | p + 1 |
+| SMA(p) | p |
+| EMA(p) | 5 × p |
+| Only price/constants | 0 |
+
+Fetch `[evaluation_start - requirement × interval, evaluation_end)` with the existing
+Binance pagination, pauses, rate-limit handling and completed-candle filtering.
+Evaluation start remains exactly the requested number of calendar days before the
+current UTC end. As in legacy mode, only fully contained candles are evaluated;
+interval alignment can exclude boundary partial candles. Insufficient prior history,
+gaps, or missing evaluation coverage raise clear errors; no values are fabricated and
+no requested days are removed to accommodate indicators.
+
+Indicators use all fetched history, but pre-range candles generate no signals or
+executions and contribute no equity samples or benchmark exposure. Initial cash is
+applied at the first evaluation candle. The first eligible signal is that candle's
+close, executing at the following candle open. Buy-and-hold starts at the first
+evaluation candle open. Final-close liquidation is preserved.
+
+EMA retains the existing first-close seed and smoothing factor `2/(p+1)`. Five spans
+reduce the contribution of the initial seed difference by approximately
+`((p-1)/(p+1))^(5p)` (less than about 0.000046), rather than making an exact
+infinite-history EMA. Absolute error still depends on the seed difference, and tiny
+residual differences can change signals near thresholds. RSI retains the existing
+Wilder SMA seed and recurrence; p+1 prior closes provide initialization, not an
+infinite-history convergence guarantee. SMA uses its exact finite rolling window.
+
+Legacy explicit CLI, demo and simple AI RSI requests preserve their original in-range
+initialization, results and JSON fields. Supported legacy RSI periods internally
+translate into DSL comparisons; period 1 and periods above 500 retain the historical
+signal path to preserve the older API's broader limits. An explicit RSI-only DSL with
+prior history can intentionally differ from legacy RSI because its seed is earlier.
+Equivalent DSL and legacy strategies on identical candles and boundaries have the
+same trades and metrics, covered by regression tests.
+
+All signals, trades and financial results are deterministic Python operations for a
+fixed validated strategy and candle history. Natural-language extraction may vary;
+review its output. Backtesting does not predict future profitability.
 
 ## Offline Demo
 
@@ -241,7 +347,8 @@ a 30-day hourly request at 12:30 excludes the first partial hour (its open prece
 start) and the current unfinished hour, leaving 719 completed candles. At an exact
 hour boundary, 720 may be returned. No valid fully contained hour is dropped. Pagination
 continues beyond the provider's per-request maximum. Missing intervals are not filled.
-No extra pre-range warm-up history is requested.
+Legacy RSI mode requests no extra pre-range history to preserve v0.2.0 results.
+Explicit DSL strategies request prior history as described below.
 
 Wilder RSI uses the first period's average gains/losses as its seed; its first value
 requires period + 1 candles. Flat windows give 50, only gains 100, only losses 0.
@@ -252,7 +359,7 @@ SMA requires period observations; EMA uses a first-value seed and hides the firs
 period - 1 outputs. Indicator inputs must be finite.
 
 A signal using completed candle N executes at **candle N+1 open**, for both entry and
-exit. Equality at thresholds means hold. A final-candle signal cannot execute.
+exit. Legacy strict threshold equality means hold; DSL `<=` and `>=` include equality. A final-candle signal cannot execute.
 One position uses all available cash, ignoring further buys while held and sells while
 flat. Any remaining position is deliberately liquidated at the final close; this is a
 simulation boundary, not an RSI signal. Trade timestamps identify candle opens, even
@@ -275,8 +382,8 @@ including entry fee. Initial balance plus all net trade PnLs equals final balanc
 Equity starts at initial cash and samples every candle open and close using
 `cash + quantity * price`. Fees reduce equity when executed; hypothetical exit fees
 are not deducted from open positions. Drawdown includes unrealized losses, but does
-not sample intrabar highs/lows. The benchmark includes the RSI warm-up period, so it
-measures passive exposure across the whole supplied range.
+not sample intrabar highs/lows. Legacy mode includes its in-range RSI initialization in the benchmark. DSL mode
+excludes all pre-range history from the benchmark and equity samples.
 
 Break-even trades count as neither winners nor losers, but count in win rate's
 denominator. Thus winners + losers can be less than total trades by the number of
@@ -324,8 +431,8 @@ and pull_request with cached dependencies and no secrets. See [CONTRIBUTING.md](
 - [x] JSON output
 - [x] Tests
 - [x] Natural-language RSI configuration
-- [x] AI strategy parser (RSI only)
-- [ ] Multiple strategy conditions
+- [x] AI strategy parser (RSI, SMA, EMA)
+- [x] Multiple and nested strategy conditions
 - [ ] MACD
 - [ ] Bollinger Bands
 - [ ] Stop Loss / Take Profit
@@ -341,7 +448,7 @@ and pull_request with cached dependencies and no secrets. See [CONTRIBUTING.md](
 - Simplified full-fill execution with fractional quantities and unlimited liquidity
 - No slippage, spread, leverage, funding, tax, or exchange lot-size model
 - No frontend, database, live trading, or order execution
-- Missing intervals use the next supplied candle; gaps may affect results
+- Legacy/direct candle runs use the next supplied candle across gaps; DSL history fetching rejects gaps
 - Availability/history depend on Binance, network access, and regional restrictions
 - Synthetic demo data is illustrative and not historical performance
 - Historical results do not predict future performance
