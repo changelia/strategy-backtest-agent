@@ -288,3 +288,76 @@ def test_stale_prepared_context_rejected() -> None:
             settings.strategies[0].to_rules(),
             context=Context([10.0] * 27, {}),
         )
+
+
+def test_identical_strategies_have_independent_portfolios() -> None:
+    settings = config()
+    identical = settings.strategies[0].to_rules()
+    settings = config(entries=[named("first", identical), named("second", identical)])
+    result = run_comparison(history([10, 9, 8, 12, 13, 5, 4, 8, 9] * 3), settings)
+    assert result.results[0].result.total_trades > 1
+    assert result.results[0].result == result.results[1].result
+
+
+def test_equity_samples_exclude_all_prior_candles(monkeypatch: pytest.MonkeyPatch) -> None:
+    from collections.abc import Sequence
+
+    from strategy_backtest_agent import metrics
+
+    observed: list[list[float]] = []
+    original = metrics.max_drawdown
+
+    def capture(equity: Sequence[float]) -> float:
+        observed.append(list(equity))
+        return original(equity)
+
+    monkeypatch.setattr(metrics, "max_drawdown", capture)
+    settings = config(initial_balance=1000)
+    run_comparison(history([1000, 500, 100] + [10.0] * 24), settings)
+    assert len(observed) == 2
+    assert all(len(samples) == 1 + 24 * 2 for samples in observed)
+    assert all(samples[0] == 1000 for samples in observed)
+
+
+def test_moving_now_boundary_is_resolved_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    from strategy_backtest_agent.comparison import engine
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz: object = None) -> "Clock":
+            return cls(2024, 1, 2, tzinfo=UTC)
+
+    monkeypatch.setattr(engine, "datetime", Clock)
+    provider = Provider(history([10.0] * 27))
+    result = asyncio.run(fetch_and_compare(provider, config(evaluation_end=None)))
+    assert len(provider.requests) == 1
+    assert provider.requests[0][3] == END
+    assert result.configuration.evaluation_end == result.shared_data.evaluation_end == END
+
+
+def test_mutated_configuration_is_revalidated_before_fetch() -> None:
+    settings = config()
+    settings.strategies.append(settings.strategies[0])
+    provider = Provider(history([10.0] * 27))
+    with pytest.raises(ValueError, match="unique"):
+        asyncio.run(fetch_and_compare(provider, settings))
+    assert not provider.requests
+
+
+def test_unaligned_end_and_utc_interval_coverage() -> None:
+    candles = history([10.0] * 27)
+    # An end between hour boundaries preserves all contained completed candles.
+    end = END + timedelta(minutes=30)
+    result = run_comparison(candles[1:], config(evaluation_end=end))
+    assert result.shared_data.evaluation_start == datetime(2024, 1, 1, 0, 30, tzinfo=UTC)
+    assert result.shared_data.first_candle_open == datetime(2024, 1, 1, 1, tzinfo=UTC)
+    assert result.shared_data.candle_count == 23
+    assert result.shared_data.warmup_candles == 3
+
+
+def test_conflicting_or_naive_override_rejected() -> None:
+    candles = history([10.0] * 27)
+    with pytest.raises(ValueError, match="conflicts"):
+        run_comparison(candles, config(), evaluation_end=END + timedelta(hours=1))
+    with pytest.raises(ValueError, match="aware"):
+        run_comparison(candles, config(), evaluation_end=END.replace(tzinfo=None))
