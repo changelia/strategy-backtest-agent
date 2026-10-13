@@ -1,4 +1,4 @@
-"""Strict extraction schema and validated RSI configuration."""
+"""Strict extraction schema and validated RSI or rule configuration."""
 
 from typing import Literal
 
@@ -42,7 +42,7 @@ class AIStrategyConfig(StrictModel):
         return value
 
     def to_backtest_config(self) -> BacktestConfig:
-        """Map validated AI settings to the existing engine without changing semantics."""
+        """Map portfolio settings; rule strategies are passed separately to the engine."""
         legacy = self.strategy if isinstance(self.strategy, RSIStrategy) else RSIStrategy()
         return BacktestConfig.model_validate(
             {

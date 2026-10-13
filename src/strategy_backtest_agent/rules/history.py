@@ -33,7 +33,7 @@ async def fetch_rule_history(
         start - required * duration,
         end,
     )
-    if any(c.timestamp >= end for c in candles):
+    if any(not start - required * duration <= c.timestamp < end for c in candles):
         raise ValueError("provider returned candles outside requested range")
     if any(
         b.timestamp - a.timestamp != duration for a, b in zip(candles, candles[1:], strict=False)

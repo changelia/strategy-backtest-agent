@@ -1,4 +1,4 @@
-"""Terminal and JSON entry point for historical RSI backtests."""
+"""Terminal and JSON entry point for historical strategy backtests."""
 
 import argparse
 import asyncio
@@ -31,17 +31,6 @@ async def _run(
     strategy: RuleStrategy | None = None,
 ) -> None:
     end = datetime.now(UTC)
-    candles = (
-        []
-        if strategy is not None
-        else (
-            demo_candles(config.timeframe, days)
-            if demo
-            else await BinanceMarketData().fetch_candles(
-                config.symbol, config.timeframe, end - timedelta(days=days), end
-            )
-        )
-    )
     boundary = 0
     if strategy is not None:
         candles, boundary = await fetch_rule_history(
@@ -51,6 +40,15 @@ async def _run(
             end - timedelta(days=days),
             end,
             strategy,
+        )
+    elif demo:
+        candles = demo_candles(config.timeframe, days)
+    else:
+        candles = await BinanceMarketData().fetch_candles(
+            config.symbol,
+            config.timeframe,
+            end - timedelta(days=days),
+            end,
         )
     if strategy is None and len(candles) <= config.rsi_period:
         raise ValueError("not enough completed candles to calculate RSI; increase days")
@@ -76,12 +74,13 @@ async def _run(
         }
         if strategy is not None:
             payload["strategy"] = strategy.model_dump(mode="json")
+            payload["trading_fee"] = config.trading_fee
             payload["indicator_configuration"] = [
                 {"name": name, "period": period} for name, period in sorted(dependencies(strategy))
             ]
             payload["evaluation_period"] = {
-                "requested_start": (end - timedelta(days=days)).isoformat(),
-                "requested_end": end.isoformat(),
+                "requested_start": (end - timedelta(days=days)).isoformat().replace("+00:00", "Z"),
+                "requested_end": end.isoformat().replace("+00:00", "Z"),
                 "warmup_candles": boundary,
                 "required_warmup_candles": warmup_count(strategy),
                 "ema_policy": "first-close seed, five spans of prior closes",
@@ -98,6 +97,7 @@ async def _run(
         print(f"\nStrategy: RSI\nRSI Period: {config.rsi_period}")
         print(f"Entry RSI: < {config.entry_rsi:g}\nExit RSI: > {config.exit_rsi:g}")
     else:
+        print(f"Warm-up: {boundary} prior candles (excluded from trades and metrics)")
         print(f"\nENTRY: {format_rule(strategy.entry)}")
         print(f"EXIT: {format_rule(strategy.exit)}")
     print(f"Fee per side: {config.trading_fee * 100:g}%\n\nResults (quote currency)")
@@ -188,7 +188,7 @@ def _ai_main() -> None:
     from strategy_backtest_agent.ai.parser import StrategyParseError, parse_strategy
 
     parser = argparse.ArgumentParser(
-        prog="strategy-backtest ai", description="Parse a long-only RSI request"
+        prog="strategy-backtest ai", description="Parse a long-only RSI, SMA or EMA rule request"
     )
     parser.add_argument(
         "text", help="Natural-language historical backtest request (one quoted argument)"
