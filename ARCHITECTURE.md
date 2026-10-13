@@ -298,3 +298,186 @@ reconciliation tests allow small rounding error. No trades gives null win rate a
 factor. No losing trades gives null profit factor; losses without wins give zero. The engine
 accepts empty history with unchanged cash and null benchmark; the CLI rejects insufficient RSI
 history.
+
+## Strategy comparison
+
+The `comparison/` package contains validated models, an execution coordinator, a pure
+formatter, and a CLI entry point. The engine imports neither OpenAI nor the AI package.
+It reuses the existing DSL, indicators, backtester and metrics rather than creating a
+second trading engine. The RSI model and strict base model now live in `models.py`;
+`ai.models` re-exports them to preserve existing imports.
+
+```text
+Natural language → one OpenAI comparison parse → ComparisonConfig
+                                                ↑
+Validated JSON configuration ────────────────────┘
+                                                ↓
+                             one shared historical provider fetch
+                                                ↓
+                             one union of indicator dependencies
+                                                ↓
+                             sequential independent backtests
+                                                ↓
+                             excess return, ranking, CLI / JSON
+```
+
+### Configuration and public Python interfaces
+
+See [examples/comparison.json](examples/comparison.json) for a complete configuration.
+`ComparisonConfig` requires a symbol and 2–5 `NamedStrategy` entries. IDs must be unique,
+1–64 ASCII letters/digits/hyphens/underscores, starting with a letter or digit. Names
+must be nonempty, at most 80 characters, and contain no control characters. Strategies
+reuse `RuleStrategy` or the existing legacy `RSIStrategy` (period 2–200). The DSL's
+RSI period limit remains 500, SMA/EMA 1000, depth 5 and 20 comparisons per strategy.
+
+Symbol, timeframe, period, capital and fee exist only at the comparison level;
+per-strategy overrides are forbidden, including identical redundant overrides.
+Defaults are 1h, 30 days, 10000 cash, fee 0.001, and `sort_by="total_return"`.
+Days must be an integer in 1–365, cash positive and finite, and fee in 0–0.05.
+`evaluation_end` accepts a timezone-aware ISO timestamp and is normalized to UTC.
+Unknown fields and unsupported rule types fail validation.
+
+```python
+import asyncio
+from pathlib import Path
+
+from strategy_backtest_agent.comparison.engine import fetch_and_compare
+from strategy_backtest_agent.comparison.models import ComparisonConfig
+from strategy_backtest_agent.market_data import BinanceMarketData
+
+config = ComparisonConfig.model_validate_json(
+    Path("examples/comparison.json").read_text(encoding="utf-8")
+)
+result = asyncio.run(fetch_and_compare(BinanceMarketData(), config, data_source="binance"))
+print(result.model_dump_json(indent=2))
+```
+
+For offline use, `run_comparison(candles, config, *, evaluation_end=None,
+data_source="provided")` accepts a full candle sequence including initialization
+history. No provider or OpenAI client is used. If neither config nor keyword supplies
+an end, it derives one from the last candle's open plus the timeframe interval.
+Conflicting configured and supplied end times are rejected. The direct comparison
+path validates complete, continuous history just like the provider path.
+
+### Shared history, initialization and indicators
+
+All strategies, including legacy RSI entries, normalize to validated DSL rules before
+comparison. Take the maximum warm-up requirement over every rule: RSI p+1, SMA p,
+EMA 5p prior closes. Compute start as the resolved UTC end minus `period_days`, and
+call the provider exactly once for `[start - maximum × interval, end)`.
+One provider call can require multiple Binance HTTP pages; existing pagination,
+0.2-second pauses and fail-fast rate-limit handling remain in effect.
+
+The shared boundary indexes the first fully contained evaluation candle. Prior candles
+never generate signals or trades and never enter equity samples or the buy-and-hold
+benchmark. Each backtest starts with its own initial cash and no position at this
+boundary. Its first possible execution follows the first evaluation candle's close.
+Insufficient warm-up, gaps, unfinished candles, missing evaluation coverage and
+out-of-range data are rejected. UTC and partial-boundary behavior match the historical
+warm-up policy above.
+
+`prepare_context` prepares the union of `(indicator name, period)` dependencies once.
+Repeated RSI/EMA/SMA references across strategies share the same series; distinct
+periods remain separate. The context is local to one comparison and is only read
+while evaluating rules. There is no global cache and no per-candle network access.
+`run_backtest` accepts an optional prepared `context`, checks its prices, dependency
+keys and series lengths, and otherwise prepares indicators as before. The financial
+accounting loop and formulas are unchanged. Sequential calls isolate portfolio state.
+
+Comparisons deliberately differ from single-strategy legacy RSI initialization: every
+comparison strategy uses prior history, including legacy entries. A legacy single run
+still seeds inside its requested window. Adding a strategy with a longer warm-up can
+move the shared seed earlier and change RSI/EMA signals even for unchanged strategies.
+Reproduction therefore requires the full comparison configuration, not just one row.
+EMA retains its finite first-close seed and five-span convergence approximation;
+RSI retains the existing Wilder SMA seed and recurrence. Neither is an exact
+infinite-history initialization.
+
+### Metrics and ranking
+
+Each `StrategyResult` contains ID, name, normalized DSL, the existing complete
+`BacktestResult` including trades, and `excess_return_pp`:
+
+```text
+excess_return_pp = total_return_percent - buy_and_hold_return_percent
+```
+
+This is a percentage-point difference, not a relative growth ratio. The engine checks
+that buy-and-hold is identical across all rows. Fees, full-cash sizing, next-open
+execution, open/close equity marks, drawdown, reconciliation and final-close liquidation
+use the existing backtester. Final-candle signals cannot create an execution.
+
+`rank_results` sorts descending by exactly one selected criterion: `total_return`,
+`excess_return`, `max_drawdown`, or `profit_factor`. For drawdown, -5% sorts ahead of
+-10%. Undefined values sort after all defined values, even zero; null profit factor
+never means infinity. Equal values sort by case-sensitive ID ascending. Results retain
+configuration order; `ranking` lists IDs in ranked order. The formatter displays rows
+in this ranking order. There is no composite score or automatically selected winner.
+
+### Comparison parser and CLI boundary
+
+`parse_comparison` makes one Responses `responses.parse` request for the entire
+comparison, using the existing SDK boundary, unsupported-feature guard and sanitized
+error handling. Its recursive Pydantic transport returns nullable global settings,
+names and DSL rules, or a rejection. It must reject inconsistent per-strategy settings,
+unsupported features, ambiguous expressions, and requests outside the 2–5 strategy
+limit. Explicit invalid values remain invalid; Python supplies defaults only to
+omitted fields. Python assigns `strategy-1`, `strategy-2`, etc. in request order.
+Returned SDK objects are revalidated; unknown fields, including invented results or
+per-strategy settings, are forbidden. Names and complete rules are validated again
+in `ComparisonConfig` before any historical fetch.
+
+RSI 25/70 shorthand uses RSI(14) <25 for entry and >70 for exit unless a different
+period is explicit. SMA 20/50 shorthand means entry SMA(20) >SMA(50), exit <; EMA
+shorthand follows the same level convention. Explicit crossover/crossunder requests
+must be rejected. AI only extracts definitions; it cannot calculate or rank results.
+Natural-language interpretation remains fallible; review the returned configuration.
+
+```bash
+poetry run strategy-backtest compare 'Compare RSI 25/70 and RSI 30/70 on BTCUSDT for 90 days'
+poetry run strategy-backtest compare --config examples/comparison.json --json
+poetry run strategy-backtest compare --config examples/comparison.json --sort profit_factor
+```
+
+The quoted request and `--config` are mutually exclusive. Config mode does not import
+or call the parser and needs no OpenAI key. `--sort` overrides `sort_by` for either
+path. Comparison stdout is a table or a single valid JSON document; failures use
+stderr and exit code 2. JSON excludes original request text, system prompts, credentials
+and raw SDK responses. Existing `ai`, explicit RSI options and `--demo` are unchanged.
+
+### Reproducibility and JSON metadata
+
+The JSON envelope contains:
+
+| Field | Contents |
+| --- | --- |
+| `configuration` | Validated shared settings, original strategies, resolved UTC end, selected sort |
+| `shared_data` | Source, exact requested UTC start/end, first/last evaluation opens, candle counts, warm-up, indicator union, history digest |
+| `buy_and_hold_return_percent` | Common fee-adjusted evaluation-period benchmark |
+| `results` | Per-strategy definitions, existing metrics/trades, excess return in pp |
+| `ranking_criterion` | One selected historical metric |
+| `ranking` | Ordered strategy IDs; no predicted winner |
+
+When an asynchronous run omits `evaluation_end`, the engine reads UTC now once and
+records that resolved value in both configuration and metadata. Fixed ends make the
+requested window repeatable. Exact results require unchanged underlying candles;
+Binance can revise historical data. Archive the candles, including warm-up, for exact
+Python replay. `candles_sha256` hashes the full combined history in sequence as compact,
+sorted-key JSON records, UTF-8 encoded with a newline after each record. Hashing is
+streamed without constructing a duplicate dataset. A different digest detects changed
+history; the digest does not itself contain or recover the candles.
+
+The recorded source describes the provider supplied by the caller. Candle count,
+first/last opens and benchmark exclude pre-range history; `history_candle_count` and
+the digest include it. Metadata also records required and actual warm-up counts and
+its finite initialization policy. Comparisons share the same simulation limitations as
+single runs and cannot establish which strategy will be profitable in the future.
+
+### Release metadata
+
+Before this milestone, `pyproject.toml` declared 0.1.0 while the latest public Git tag
+was v0.3.0; the v0.3.0 tagged tree also carried the stale 0.1.0 metadata. A separate
+version-consistency commit synchronizes current package metadata to 0.3.0. Old tags
+are not rewritten. The v0.4.0 comparison milestone remains unreleased: no v0.4.0 tag,
+push or publication accompanies implementation. Assign its release version through
+the release workflow when it is ready to publish.

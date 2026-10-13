@@ -1,0 +1,66 @@
+{
+  "symbol": "BTCUSDT",
+  "timeframe": "1h",
+  "period_days": 90,
+  "initial_balance": 10000,
+  "fee": 0.001,
+  "evaluation_end": "2024-07-01T00:00:00Z",
+  "sort_by": "total_return",
+  "strategies": [
+    {
+      "id": "rsi-25",
+      "name": "RSI 25/70",
+      "strategy": {
+        "type": "rsi",
+        "period": 14,
+        "entry_below": 25,
+        "exit_above": 70
+      }
+    },
+    {
+      "id": "rsi-30",
+      "name": "RSI 30/70",
+      "strategy": {
+        "type": "rsi",
+        "period": 14,
+        "entry_below": 30,
+        "exit_above": 70
+      }
+    },
+    {
+      "id": "sma-20-50",
+      "name": "SMA 20/50 levels",
+      "strategy": {
+        "type": "rules",
+        "entry": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "sma",
+            "period": 20
+          },
+          "operator": ">",
+          "right": {
+            "type": "indicator",
+            "name": "sma",
+            "period": 50
+          }
+        },
+        "exit": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "sma",
+            "period": 20
+          },
+          "operator": "<",
+          "right": {
+            "type": "indicator",
+            "name": "sma",
+            "period": 50
+          }
+        }
+      }
+    }
+  ]
+}

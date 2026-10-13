@@ -7,7 +7,8 @@ strategies and tests them on Binance historical candles. OpenAI interprets your
 request; Python calculates indicators, signals, trades, fees, and performance metrics.
 Use the CLI to explore a strategy or export JSON for your own research tools.
 
-Current functionality: **v0.3.0 — AI Strategy Parser, Strategy DSL, and Rule Engine.**
+Development milestone: **v0.4.0 — Strategy Comparison Engine** (unreleased).
+Latest release tag and package version: **v0.3.0**.
 
 ## Quick Start
 
@@ -70,6 +71,42 @@ Max Drawdown: -52.87%
 Profit Factor: 0.00
 ```
 
+## Compare Strategies
+
+Compare 2–5 strategies on the same symbol, timeframe, historical window, initial
+balance, and fee. Each strategy runs its own independent portfolio.
+
+```bash
+poetry run strategy-backtest compare \
+  'Compare RSI 25/70, RSI 30/70 and SMA 20/50 on BTCUSDT over 90 days'
+```
+
+Or use a validated JSON config without an OpenAI key (Binance access required):
+
+```bash
+poetry run strategy-backtest compare --config examples/comparison.json
+poetry run strategy-backtest compare --config examples/comparison.json --json
+poetry run strategy-backtest compare --config examples/comparison.json --sort max_drawdown
+```
+
+The [example config](examples/comparison.json) sets a fixed UTC end time. Data is
+fetched once, and shared indicators are calculated once. All comparison strategies,
+including legacy RSI configurations, use the same prior-history warm-up. This can
+produce different results from single-strategy legacy RSI runs.
+
+The table shows returns, excess return, drawdown, trades, win rate, and profit factor.
+**Excess return** is strategy return minus buy-and-hold return, in percentage points.
+Sort by `total_return` (default), `excess_return`, `max_drawdown`, or `profit_factor`.
+Less negative drawdown ranks higher; undefined metrics rank last, with ties broken
+by strategy ID. A null profit factor is not infinity. Rankings describe historical
+results and do not predict which strategy will perform best in the future.
+
+Comparison JSON contains `configuration`, `shared_data`, `buy_and_hold_return_percent`,
+`results`, `ranking_criterion`, and ranked strategy IDs in `ranking`. It records the
+resolved UTC window, warm-up policy, definitions, and a candle-history digest. A fixed
+end makes the requested window repeatable; exact reproduction requires the same data.
+Multi-symbol comparisons and per-strategy overrides of shared trading settings are rejected.
+
 ## Supported Strategies
 
 - Wilder RSI, SMA, EMA, completed candle close (`price`), and finite numeric constants
@@ -79,6 +116,7 @@ Profit Factor: 0.00
 - Next-candle-open execution, entry/exit fees, and final-close liquidation
 - Return, buy-and-hold comparison, trade PnL, win rate, drawdown, and profit factor
 - Paginated Binance historical data, terminal summaries, JSON, and an offline demo
+- Single-symbol strategy comparisons with shared data and indicator preparation
 
 DSL periods: RSI 2–500; SMA/EMA 2–1000. Rules are limited to 20 comparisons and depth 5.
 RSI defaults to period 14 when omitted; specify SMA/EMA periods. Use an explicit
@@ -168,9 +206,9 @@ The application does not place orders or connect to private trading endpoints.
 
 ## Roadmap: Strategy Research Agent
 
-Planned research capabilities, not available in v0.3.0:
+Strategy comparison is implemented in the v0.4.0 development milestone. Planned next
+research capabilities:
 
-- **Strategy comparison:** evaluate multiple strategies on the same data and assumptions.
 - **Parameter sensitivity:** explore how results change across periods and thresholds.
 - **Out-of-sample validation:** separate development data from held-out evaluation periods.
 - **Research reports:** summarize configurations, evidence, risks, and limitations in reproducible reports.
