@@ -10,6 +10,23 @@ class Model(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", allow_inf_nan=False)
 
 
+class StrictModel(Model):
+    model_config = ConfigDict(frozen=True, extra="forbid", allow_inf_nan=False, strict=True)
+
+
+class RSIStrategy(StrictModel):
+    type: Literal["rsi"] = "rsi"
+    period: int = Field(default=14, ge=2, le=200)
+    entry_below: float = Field(default=30, gt=0, lt=100)
+    exit_above: float = Field(default=70, gt=0, lt=100)
+
+    @model_validator(mode="after")
+    def thresholds(self) -> "RSIStrategy":
+        if self.entry_below >= self.exit_above:
+            raise ValueError("entry threshold must be lower than exit threshold")
+        return self
+
+
 class Candle(Model):
     timestamp: AwareDatetime
     open: float = Field(gt=0)

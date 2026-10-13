@@ -2,28 +2,13 @@
 
 from typing import Literal
 
-from pydantic import ConfigDict, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from strategy_backtest_agent.market_data import TIMEFRAMES
-from strategy_backtest_agent.models import BacktestConfig, Model
+from strategy_backtest_agent.models import BacktestConfig
+from strategy_backtest_agent.models import RSIStrategy as RSIStrategy
+from strategy_backtest_agent.models import StrictModel as StrictModel
 from strategy_backtest_agent.rules.models import RuleStrategy
-
-
-class StrictModel(Model):
-    model_config = ConfigDict(frozen=True, extra="forbid", allow_inf_nan=False, strict=True)
-
-
-class RSIStrategy(StrictModel):
-    type: Literal["rsi"] = "rsi"
-    period: int = Field(default=14, ge=2, le=200)
-    entry_below: float = Field(default=30, gt=0, lt=100)
-    exit_above: float = Field(default=70, gt=0, lt=100)
-
-    @model_validator(mode="after")
-    def thresholds(self) -> "RSIStrategy":
-        if self.entry_below >= self.exit_above:
-            raise ValueError("entry threshold must be lower than exit threshold")
-        return self
 
 
 class AIStrategyConfig(StrictModel):
