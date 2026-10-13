@@ -50,11 +50,19 @@ def warmup_count(strategy: RuleStrategy) -> int:
 
 
 def prepare_indicators(candles: Sequence[Candle], strategy: RuleStrategy) -> Context:
+    return prepare_context(candles, dependencies(strategy))
+
+
+def prepare_context(
+    candles: Sequence[Candle],
+    indicator_dependencies: set[tuple[str, int]],
+) -> Context:
+    """Calculate a run-local union of validated strategy dependencies once."""
     prices = [c.close for c in candles]
     series = pd.Series(prices, dtype=float)
     functions = {"rsi": indicators.rsi, "sma": indicators.sma, "ema": indicators.ema}
     cache = {
-        key: functions[key[0]](series, key[1]).tolist() for key in sorted(dependencies(strategy))
+        key: functions[key[0]](series, key[1]).tolist() for key in sorted(indicator_dependencies)
     }
     return Context(prices, cache)
 

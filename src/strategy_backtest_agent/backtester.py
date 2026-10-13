@@ -4,7 +4,12 @@ from collections.abc import Sequence
 
 from strategy_backtest_agent.metrics import summarize
 from strategy_backtest_agent.models import BacktestConfig, BacktestResult, Candle, Trade
-from strategy_backtest_agent.rules.evaluator import evaluate_rule, prepare_indicators
+from strategy_backtest_agent.rules.evaluator import (
+    Context,
+    dependencies,
+    evaluate_rule,
+    prepare_indicators,
+)
 from strategy_backtest_agent.rules.models import RuleStrategy
 from strategy_backtest_agent.strategy import legacy_rules, rsi_signals
 
@@ -15,6 +20,7 @@ def run_backtest(
     strategy: RuleStrategy | None = None,
     *,
     evaluation_start: int = 0,
+    context: Context | None = None,
 ) -> BacktestResult:
     """Execute candle N signals at N+1 open and liquidate at the final close."""
     if any(a.timestamp >= b.timestamp for a, b in zip(candles, candles[1:], strict=False)):
@@ -25,7 +31,18 @@ def run_backtest(
         strategy = legacy_rules(config)
     if strategy is not None:
         strategy = RuleStrategy.model_validate(strategy.model_dump(warnings=False))
-    context = prepare_indicators(candles, strategy) if strategy is not None else None
+    if context is not None:
+        if strategy is None:
+            raise ValueError("a prepared context requires a DSL strategy")
+        if context.prices != [c.close for c in candles]:
+            raise ValueError("prepared context does not match candle closes")
+        if any(
+            key not in context.indicators or len(context.indicators[key]) != len(candles)
+            for key in dependencies(strategy)
+        ):
+            raise ValueError("prepared context has missing or incomplete indicator series")
+    elif strategy is not None:
+        context = prepare_indicators(candles, strategy)
     signals = rsi_signals(candles, config) if strategy is None else []
     cash = config.initial_balance
     fee = config.trading_fee

@@ -6,9 +6,10 @@ import pytest
 from pydantic import ValidationError
 
 from strategy_backtest_agent.comparison.models import ComparisonConfig, NamedStrategy
+from strategy_backtest_agent.rules.models import Comparison
 
 
-def settings(count: int = 2, **updates: object) -> dict[str, object]:
+def settings(count: int = 2, /, **updates: object) -> dict[str, object]:
     return {
         "symbol": "BTCUSDT",
         "strategies": [
@@ -23,7 +24,9 @@ def settings(count: int = 2, **updates: object) -> dict[str, object]:
 def test_valid_strategies_and_normalization(count: int) -> None:
     config = ComparisonConfig.model_validate(settings(count))
     assert len(config.strategies) == count
-    assert config.strategies[0].to_rules().entry.operator == "<"
+    entry = config.strategies[0].to_rules().entry
+    assert isinstance(entry, Comparison)
+    assert entry.operator == "<"
     assert config.to_backtest_config().initial_balance == 10000
     assert ComparisonConfig.model_validate_json(config.model_dump_json()) == config
 
