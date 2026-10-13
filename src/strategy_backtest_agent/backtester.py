@@ -4,14 +4,29 @@ from collections.abc import Sequence
 
 from strategy_backtest_agent.metrics import summarize
 from strategy_backtest_agent.models import BacktestConfig, BacktestResult, Candle, Trade
-from strategy_backtest_agent.strategy import rsi_signals
+from strategy_backtest_agent.rules.evaluator import evaluate_rule, prepare_indicators
+from strategy_backtest_agent.rules.models import RuleStrategy
+from strategy_backtest_agent.strategy import legacy_rules, rsi_signals
 
 
-def run_backtest(candles: Sequence[Candle], config: BacktestConfig) -> BacktestResult:
+def run_backtest(
+    candles: Sequence[Candle],
+    config: BacktestConfig,
+    strategy: RuleStrategy | None = None,
+    *,
+    evaluation_start: int = 0,
+) -> BacktestResult:
     """Execute candle N signals at N+1 open and liquidate at the final close."""
     if any(a.timestamp >= b.timestamp for a, b in zip(candles, candles[1:], strict=False)):
         raise ValueError("candles must have unique, strictly increasing timestamps")
-    signals = rsi_signals(candles, config)
+    if not 0 <= evaluation_start <= len(candles):
+        raise ValueError("invalid evaluation_start")
+    if strategy is None:
+        strategy = legacy_rules(config)
+    if strategy is not None:
+        strategy = RuleStrategy.model_validate(strategy.model_dump())
+    context = prepare_indicators(candles, strategy) if strategy is not None else None
+    signals = rsi_signals(candles, config) if strategy is None else []
     cash = config.initial_balance
     fee = config.trading_fee
     quantity = 0.0
@@ -39,8 +54,16 @@ def run_backtest(candles: Sequence[Candle], config: BacktestConfig) -> BacktestR
         quantity = 0.0
         entry = None
 
-    for i, candle in enumerate(candles):
-        signal = signals[i - 1] if i > 0 else 0
+    for i in range(evaluation_start, len(candles)):
+        candle = candles[i]
+        signal = 0
+        if i > evaluation_start:
+            if strategy is not None and context is not None:
+                rule = strategy.exit if quantity > 0 else strategy.entry
+                if evaluate_rule(rule, i - 1, context):
+                    signal = -1 if quantity > 0 else 1
+            else:
+                signal = signals[i - 1]
         if quantity > 0 and signal == -1:
             close_position(candle, candle.open)
         elif quantity == 0 and signal == 1 and cash > 0:
@@ -54,6 +77,8 @@ def run_backtest(candles: Sequence[Candle], config: BacktestConfig) -> BacktestR
             close_position(candle, candle.close)
         equity.append(cash + quantity * candle.close)
     benchmark = None
-    if candles:
-        benchmark = (candles[-1].close * (1 - fee) / (candles[0].open * (1 + fee)) - 1) * 100
+    if evaluation_start < len(candles):
+        benchmark = (
+            candles[-1].close * (1 - fee) / (candles[evaluation_start].open * (1 + fee)) - 1
+        ) * 100
     return summarize(config.initial_balance, cash, trades, equity, benchmark)
