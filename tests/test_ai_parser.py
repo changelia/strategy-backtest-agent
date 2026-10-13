@@ -6,7 +6,7 @@ import pytest
 from openai import OpenAI
 
 from strategy_backtest_agent.ai import parser
-from strategy_backtest_agent.ai.models import ParserOutput
+from strategy_backtest_agent.ai.models import ParserOutput, RSIStrategy
 from strategy_backtest_agent.ai.parser import StrategyParseError, parse_strategy
 
 
@@ -86,6 +86,7 @@ def test_actual_sdk_structured_parse_defaults(monkeypatch: pytest.MonkeyPatch) -
     install_transport(monkeypatch, handler)
     parsed = parse_strategy("Backtest BTCUSDT")
     assert parsed.period_days == 30
+    assert isinstance(parsed.strategy, RSIStrategy)
     assert parsed.strategy.period == 14
 
 
@@ -128,6 +129,7 @@ def test_custom_values_and_model(monkeypatch: pytest.MonkeyPatch) -> None:
         0.002,
     )
     assert parsed.to_backtest_config().rsi_period == 10
+    assert isinstance(parsed.strategy, RSIStrategy)
     assert (parsed.strategy.entry_below, parsed.strategy.exit_above) == (25, 65)
 
 
@@ -340,6 +342,7 @@ def test_partial_rsi_defaults_preserve_explicit_threshold(monkeypatch: pytest.Mo
         ),
     )
     parsed = parse_strategy("Backtest BTCUSDT buying below RSI 25")
+    assert isinstance(parsed.strategy, RSIStrategy)
     assert (parsed.strategy.period, parsed.strategy.entry_below, parsed.strategy.exit_above) == (
         14,
         25,
