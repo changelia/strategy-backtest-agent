@@ -140,7 +140,7 @@ def test_custom_values_and_model(monkeypatch: pytest.MonkeyPatch) -> None:
         "Buy with leverage",
         "Buy BTCUSDT with stop loss",
         "Use Bollinger Bands",
-        "RSI and SMA",
+        "Buy when SMA 20 crosses above SMA 50",
         "BTCUSDT take profit",
         "Predict BTCUSDT prices",
         "live trading BTCUSDT",

@@ -6,6 +6,7 @@ from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from strategy_backtest_agent.market_data import TIMEFRAMES
 from strategy_backtest_agent.models import BacktestConfig, Model
+from strategy_backtest_agent.rules.models import RuleStrategy
 
 
 class StrictModel(Model):
@@ -31,7 +32,7 @@ class AIStrategyConfig(StrictModel):
     period_days: int = Field(default=30, gt=0, le=365)
     initial_balance: float = Field(default=10000, gt=0)
     fee: float = Field(default=0.001, ge=0, le=0.05)
-    strategy: RSIStrategy = Field(default_factory=RSIStrategy)
+    strategy: RSIStrategy | RuleStrategy = Field(default_factory=RSIStrategy)
 
     @field_validator("timeframe")
     @classmethod
@@ -42,15 +43,16 @@ class AIStrategyConfig(StrictModel):
 
     def to_backtest_config(self) -> BacktestConfig:
         """Map validated AI settings to the existing engine without changing semantics."""
+        legacy = self.strategy if isinstance(self.strategy, RSIStrategy) else RSIStrategy()
         return BacktestConfig.model_validate(
             {
                 "symbol": self.symbol,
                 "timeframe": self.timeframe,
                 "initial_balance": self.initial_balance,
                 "trading_fee": self.fee,
-                "rsi_period": self.strategy.period,
-                "entry_rsi": self.strategy.entry_below,
-                "exit_rsi": self.strategy.exit_above,
+                "rsi_period": legacy.period,
+                "entry_rsi": legacy.entry_below,
+                "exit_rsi": legacy.exit_above,
             }
         )
 
@@ -68,7 +70,7 @@ class StrategyExtraction(StrictModel):
     period_days: int | None
     initial_balance: float | None
     fee: float | None
-    strategy: RSIExtraction | None
+    strategy: RSIExtraction | RuleStrategy | None
 
     def validated_config(self) -> AIStrategyConfig:
         """Apply defaults only to omitted values, preserving explicit invalid values."""
@@ -90,6 +92,7 @@ class ParserOutput(StrictModel):
             "stop_loss",
             "take_profit",
             "multiple_conditions",
+            "crossover",
             "multiple_symbols",
             "live_trading",
             "prediction",

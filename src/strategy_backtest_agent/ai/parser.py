@@ -33,7 +33,10 @@ _UNSUPPORTED = (
     (r"\bshort(?:[- ]selling|\s+position)?\b", "short selling"),
     (r"\bstop[- ]?loss\b", "stop loss"),
     (r"\btake[- ]?profit\b", "take profit"),
-    (r"\b(?:sma|ema)\b", "multiple or unsupported indicators"),
+    (
+        r"\bcross(?:es|ing)?\s+(?:above|below|over|under)\b|\bcross(?:over|under)\b",
+        "crossover/crossunder events",
+    ),
     (r"\bportfolio\b", "portfolio strategies"),
     (r"\blive\s+trad(?:e|ing)\b", "live trading"),
     (r"\bpredict(?:ion|ions|ing)?\b", "price prediction"),
@@ -57,7 +60,8 @@ def parse_strategy(text: str) -> AIStrategyConfig:
     for pattern, label in _UNSUPPORTED:
         if re.search(pattern, text, re.IGNORECASE):
             raise StrategyParseError(
-                f"Unsupported strategy: {label}. Currently supported: long-only RSI"
+                f"Unsupported strategy: {label}. "
+                "Currently supported: long-only RSI, SMA, EMA level rules"
             )
     model = os.environ.get("OPENAI_MODEL", DEFAULT_MODEL).strip()
     if not model:
@@ -81,7 +85,8 @@ def parse_strategy(text: str) -> AIStrategyConfig:
         if output.rejection is not None:
             label = output.rejection.replace("_", " ")
             raise StrategyParseError(
-                f"Request rejected: {label}. Currently supported: long-only RSI"
+                f"Request rejected: {label}. "
+                "Currently supported: long-only RSI, SMA, EMA level rules"
             )
         assert output.configuration is not None
         configuration = output.configuration.validated_config()

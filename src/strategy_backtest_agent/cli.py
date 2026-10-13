@@ -12,6 +12,10 @@ from strategy_backtest_agent.backtester import run_backtest
 from strategy_backtest_agent.demo import demo_candles
 from strategy_backtest_agent.market_data import TIMEFRAMES, BinanceMarketData, MarketDataError
 from strategy_backtest_agent.models import BacktestConfig
+from strategy_backtest_agent.rules.evaluator import dependencies, warmup_count
+from strategy_backtest_agent.rules.formatter import format_rule
+from strategy_backtest_agent.rules.history import fetch_rule_history
+from strategy_backtest_agent.rules.models import RuleStrategy
 
 
 def _percent(value: float | None) -> str:
@@ -24,18 +28,34 @@ async def _run(
     demo: bool,
     as_json: bool,
     ai_context: dict[str, object] | None = None,
+    strategy: RuleStrategy | None = None,
 ) -> None:
     end = datetime.now(UTC)
     candles = (
-        demo_candles(config.timeframe, days)
-        if demo
-        else await BinanceMarketData().fetch_candles(
-            config.symbol, config.timeframe, end - timedelta(days=days), end
+        []
+        if strategy is not None
+        else (
+            demo_candles(config.timeframe, days)
+            if demo
+            else await BinanceMarketData().fetch_candles(
+                config.symbol, config.timeframe, end - timedelta(days=days), end
+            )
         )
     )
-    if len(candles) <= config.rsi_period:
+    boundary = 0
+    if strategy is not None:
+        candles, boundary = await fetch_rule_history(
+            BinanceMarketData(),
+            config.symbol,
+            config.timeframe,
+            end - timedelta(days=days),
+            end,
+            strategy,
+        )
+    if strategy is None and len(candles) <= config.rsi_period:
         raise ValueError("not enough completed candles to calculate RSI; increase days")
-    result = run_backtest(candles, config)
+    result = run_backtest(candles, config, strategy, evaluation_start=boundary)
+    candles = candles[boundary:]
     if as_json:
         payload = {
             "symbol": config.symbol,
@@ -54,6 +74,18 @@ async def _run(
             },
             **result.model_dump(mode="json"),
         }
+        if strategy is not None:
+            payload["strategy"] = strategy.model_dump(mode="json")
+            payload["indicator_configuration"] = [
+                {"name": name, "period": period} for name, period in sorted(dependencies(strategy))
+            ]
+            payload["evaluation_period"] = {
+                "requested_start": (end - timedelta(days=days)).isoformat(),
+                "requested_end": end.isoformat(),
+                "warmup_candles": boundary,
+                "required_warmup_candles": warmup_count(strategy),
+                "ema_policy": "first-close seed, five spans of prior closes",
+            }
         if ai_context is not None:
             payload = {**ai_context, "backtest_result": payload}
         print(json.dumps(payload, allow_nan=False))
@@ -62,8 +94,12 @@ async def _run(
     print(f"Symbol: {config.symbol}\nTimeframe: {config.timeframe}\nPeriod: {days} days")
     print(f"Data: {'synthetic offline demo' if demo else 'Binance'} ({len(candles)} candles)")
     print(f"Range (candle opens, UTC): {candles[0].timestamp} → {candles[-1].timestamp}")
-    print(f"\nStrategy: RSI\nRSI Period: {config.rsi_period}")
-    print(f"Entry RSI: < {config.entry_rsi:g}\nExit RSI: > {config.exit_rsi:g}")
+    if strategy is None:
+        print(f"\nStrategy: RSI\nRSI Period: {config.rsi_period}")
+        print(f"Entry RSI: < {config.entry_rsi:g}\nExit RSI: > {config.exit_rsi:g}")
+    else:
+        print(f"\nENTRY: {format_rule(strategy.entry)}")
+        print(f"EXIT: {format_rule(strategy.exit)}")
     print(f"Fee per side: {config.trading_fee * 100:g}%\n\nResults (quote currency)")
     print(f"Initial Balance: {result.initial_balance:,.2f}")
     print(f"Final Balance: {result.final_balance:,.2f}")
@@ -174,12 +210,24 @@ def _ai_main() -> None:
             print(f"Input:\n{args.text}\n\nParsed Configuration:")
             print(f"Symbol: {parsed.symbol}\nTimeframe: {parsed.timeframe}")
             print(f"Period: {parsed.period_days} days\nBalance: {parsed.initial_balance:,.2f}")
-            print(f"RSI Period: {parsed.strategy.period}")
-            print(f"Entry RSI: < {parsed.strategy.entry_below:g}")
-            print(f"Exit RSI: > {parsed.strategy.exit_above:g}\nFee: {parsed.fee * 100:g}%")
+            if isinstance(parsed.strategy, RuleStrategy):
+                print(f"ENTRY:\n  {format_rule(parsed.strategy.entry)}")
+                print(f"EXIT:\n  {format_rule(parsed.strategy.exit)}")
+            else:
+                print(f"RSI Period: {parsed.strategy.period}")
+                print(f"Entry RSI: < {parsed.strategy.entry_below:g}")
+                print(f"Exit RSI: > {parsed.strategy.exit_above:g}")
+            print(f"Fee: {parsed.fee * 100:g}%")
             print("\nRunning backtest...\n")
         asyncio.run(
-            _run(parsed.to_backtest_config(), parsed.period_days, False, args.json, context)
+            _run(
+                parsed.to_backtest_config(),
+                parsed.period_days,
+                False,
+                args.json,
+                context,
+                parsed.strategy if isinstance(parsed.strategy, RuleStrategy) else None,
+            )
         )
     except (StrategyParseError, MarketDataError, ValueError, OverflowError) as exc:
         parser.exit(2, f"Error: {exc}\n")
