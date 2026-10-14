@@ -14,7 +14,13 @@ from test_validation_engine import small
 from strategy_backtest_agent import indicators, metrics
 from strategy_backtest_agent.backtester import run_backtest
 from strategy_backtest_agent.models import BacktestConfig, BacktestResult, Candle
-from strategy_backtest_agent.rules.evaluator import Context, dependencies, prepare_context
+from strategy_backtest_agent.rules.evaluator import (
+    Context,
+    dependencies,
+    indicator_warmup,
+    prepare_context,
+    warmup_count,
+)
 from strategy_backtest_agent.rules.models import RuleStrategy
 from strategy_backtest_agent.sensitivity import engine
 from strategy_backtest_agent.sensitivity.engine import fetch_and_analyze, run_sensitivity
@@ -156,20 +162,22 @@ def test_fetch_once_maximum_warmup_unique_cache_and_portfolio_isolation(
     provider = Provider(candles)
     report = asyncio.run(fetch_and_analyze(provider, config, data_source="fixture"))
     assert provider.requests == [("BTCUSDT", "1h", END - timedelta(hours=24 + required), END)]
-    assert calls == [(period, required + 12) for period in [2, 3, 4]]
+    assert calls == [(period, indicator_warmup(name, period) + 12) for period in [2, 3, 4]]
     assert (
         report.shared_data.required_warmup_candles == report.shared_data.warmup_candles == required
     )
     assert [(i.name, i.period) for i in report.shared_data.indicators] == [
         (name, p) for p in [2, 3, 4]
     ]
-    # Independent uncached runs must exactly match the shared-cache coordinator.
+    # Independent uncached runs use the indicator's own recorded initialization
+    # window and must exactly match the shared-cache coordinator.
     for variant, row in zip(report.variants, report.results, strict=True):
+        own_required = warmup_count(variant.strategy)
         assert row.train.result == run_backtest(
-            candles[: required + 12],
+            candles[required - own_required : required + 12],
             config.to_backtest_config(),
             variant.strategy,
-            evaluation_start=required,
+            evaluation_start=own_required,
         )
         assert row.train.result.final_balance == pytest.approx(
             1000 + sum(t.pnl for t in row.train.result.trades)

@@ -11,10 +11,18 @@ from test_rules import comparison, indicator, strategy
 from test_sensitivity_grid import PRICE, ZERO, settings, spec
 
 from strategy_backtest_agent import backtester, indicators
+from strategy_backtest_agent.backtester import run_backtest
+from strategy_backtest_agent.metrics import summarize
 from strategy_backtest_agent.models import BacktestConfig, BacktestResult, Candle, Trade
-from strategy_backtest_agent.rules.evaluator import Context
+from strategy_backtest_agent.rules.evaluator import (
+    Context,
+    evaluate_rule,
+    indicator_warmup,
+    prepare_context,
+)
 from strategy_backtest_agent.rules.models import Rule, RuleStrategy
 from strategy_backtest_agent.sensitivity import engine
+from strategy_backtest_agent.sensitivity.cache import prepare_train_context
 from strategy_backtest_agent.sensitivity.engine import fetch_and_analyze, run_sensitivity
 
 
@@ -138,9 +146,9 @@ def test_every_test_ohlcv_change_leaves_all_train_computations_identical(
     signal_indices: list[int] = []
     equity_samples: list[list[float]] = []
     original_backtest, original_signal, original_summary = (
-        engine.run_backtest,
-        backtester.evaluate_rule,
-        backtester.summarize,
+        run_backtest,
+        evaluate_rule,
+        summarize,
     )
     original_indicator = {"rsi": indicators.rsi, "sma": indicators.sma, "ema": indicators.ema}[name]
 
@@ -207,3 +215,151 @@ def test_every_test_ohlcv_change_leaves_all_train_computations_identical(
     assert indicator_calls == [(name, 2)] * 2  # Unique cached key, once per run.
     assert any(row.train.result.total_trades for row in first.results)
     assert all("test" not in row.model_dump() for row in first.results)
+
+
+@pytest.mark.parametrize("name", ["rsi", "sma", "ema"])
+def test_anchored_cache_matches_independent_initialization_and_every_train_prefix(
+    name: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    candles = recursive_archive(name)
+    boundary = len(candles) - 24
+    train = candles[: boundary + 12]
+    keys = {(name, 2), (name, 6)}
+    original = {"rsi": indicators.rsi, "sma": indicators.sma, "ema": indicators.ema}[name]
+    calls: list[tuple[int, int]] = []
+
+    def capture(series: pd.Series, period: int) -> pd.Series:
+        calls.append((period, len(series)))
+        return original(series, period)
+
+    monkeypatch.setattr(indicators, name, capture)
+    cache, initializations = prepare_train_context(train, boundary, keys)
+    assert calls == [(p, indicator_warmup(name, p) + 12) for p in (2, 6)]
+    assert cache.prices == [c.close for c in train]
+    for profile in initializations:
+        key = (profile.indicator.name, profile.indicator.period)
+        required = indicator_warmup(*key)
+        assert profile.prior_candle_count == required
+        assert profile.history_start == candles[boundary - required].timestamp
+        start = boundary - required
+        assert len(cache.indicators[key]) == len(train)
+        assert all(pd.isna(value) for value in cache.indicators[key][:start])
+        independent = prepare_context(train[start:], {key})
+        assert cache.indicators[key][start:] == pytest.approx(
+            independent.indicators[key], nan_ok=True
+        )
+        for index in range(boundary, len(train)):
+            prefix, _ = prepare_train_context(train[: index + 1], boundary, keys)
+            assert prefix.indicators[key] == pytest.approx(
+                cache.indicators[key][: index + 1], nan_ok=True
+            )
+
+
+def test_mixed_recursive_cache_keys_do_not_collide_or_move_each_others_seeds() -> None:
+    candles = recursive_archive("ema")
+    boundary = len(candles) - 24
+    train = candles[: boundary + 12]
+    keys = {("rsi", 2), ("ema", 2)}
+    original, anchors = prepare_train_context(train, boundary, keys)
+    expanded, expanded_anchors = prepare_train_context(
+        train, boundary, keys | {("rsi", 6), ("ema", 6)}
+    )
+    for key in keys:
+        assert original.indicators[key] == pytest.approx(expanded.indicators[key], nan_ok=True)
+        assert next(p for p in anchors if (p.indicator.name, p.indicator.period) == key) == next(
+            p for p in expanded_anchors if (p.indicator.name, p.indicator.period) == key
+        )
+    assert original.indicators[("rsi", 2)][boundary:] != original.indicators[("ema", 2)][boundary:]
+
+
+@pytest.mark.parametrize("name", ["rsi", "ema"])
+def test_recorded_initialization_and_finite_history_limitation(name: str) -> None:
+    candles = recursive_archive(name)
+    boundary = len(candles) - 24
+    train = candles[: boundary + 12]
+    context, profiles = prepare_train_context(train, boundary, {(name, 2)})
+    required = indicator_warmup(name, 2)
+    assert len(profiles) == 1
+    # Older unused data cannot alter the anchored seed, but revising a candle
+    # inside the indicator's recorded finite initialization window can.
+    older = list(train)
+    older[0] = older[0].model_copy(update={"open": 2e6, "close": 2e6, "high": 2e6, "low": 2e6})
+    same, _ = prepare_train_context(older, boundary, {(name, 2)})
+    assert context.indicators[(name, 2)] == pytest.approx(same.indicators[(name, 2)], nan_ok=True)
+    recent = list(train)
+    index = boundary - required
+    recent[index] = recent[index].model_copy(
+        update={"open": 2e6, "close": 2e6, "high": 2e6, "low": 2e6}
+    )
+    different, _ = prepare_train_context(recent, boundary, {(name, 2)})
+    assert context.indicators[(name, 2)][boundary] != different.indicators[(name, 2)][boundary]
+
+
+@pytest.mark.parametrize("boundary", [-1, 0, 3, 4])
+def test_anchored_cache_rejects_missing_history_or_invalid_evaluation_start(boundary: int) -> None:
+    candles = recursive_archive("rsi")[:4]
+    with pytest.raises(ValueError, match="prior history|evaluation_start"):
+        prepare_train_context(candles, boundary, {("ema", 2)})
+
+
+@pytest.mark.parametrize("name,threshold", [("rsi", 36.4), ("ema", 104.0)])
+def test_grid_stability_with_unaligned_fixed_end(name: str, threshold: float) -> None:
+    from datetime import timedelta
+
+    from test_comparison_engine import END
+
+    candles = recursive_archive(name)
+    base = strategy(
+        comparison(indicator(name, 2), "<", {"type": "value", "value": threshold}),
+        comparison(PRICE, "<", ZERO),
+    )
+    reports = [
+        asyncio.run(
+            fetch_and_analyze(
+                Archive(candles),
+                settings(
+                    base_strategy=base,
+                    parameters=[spec("entry.left.period", values=values)],
+                    evaluation_end=END + timedelta(minutes=30),
+                ),
+            )
+        )
+        for values in ([2], [2, 6])
+    ]
+    assert reports[0].split == reports[1].split
+    assert reports[0].split.train_start == END - timedelta(hours=23)
+    assert reports[0].results[0].train.result == reports[1].results[0].train.result
+    short_anchors = [
+        next(p for p in report.shared_data.indicator_initializations if p.indicator.period == 2)
+        for report in reports
+    ]
+    assert short_anchors[0] == short_anchors[1]
+    assert short_anchors[0].history_start == reports[0].split.train_start - timedelta(
+        hours=indicator_warmup(name, 2)
+    )
+
+
+@pytest.mark.parametrize("name,threshold", [("rsi", 36.4), ("ema", 104.0)])
+def test_all_twelve_json_sections_repeat_with_finite_anchored_metadata(
+    name: str, threshold: float
+) -> None:
+    import json
+
+    from strategy_backtest_agent.sensitivity.models import SensitivityReport
+
+    candles = recursive_archive(name)
+    base = strategy(
+        comparison(indicator(name, 2), "<", {"type": "value", "value": threshold}),
+        comparison(PRICE, "<", ZERO),
+    )
+    config = settings(base_strategy=base, parameters=[spec("entry.left.period", values=[2, 6])])
+    first = asyncio.run(fetch_and_analyze(Archive(candles), config))
+    second = asyncio.run(fetch_and_analyze(Archive(candles), config))
+    payload = json.loads(first.model_dump_json())
+    repeated = json.loads(second.model_dump_json())
+    assert len(payload) == 12
+    assert all(payload[section] == repeated[section] for section in payload)
+    encoded = json.dumps(payload, allow_nan=False)
+    assert SensitivityReport.model_validate_json(encoded) == first
+    assert "indicator_initializations" in payload["shared_data"]

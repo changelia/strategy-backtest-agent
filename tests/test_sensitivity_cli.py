@@ -80,6 +80,14 @@ def test_success(
         assert data["results"][0]["train"]["result"]["profit_factor"] is None
         assert data["results"][0]["train"]["result"]["win_rate"] is None
         assert data["matrix"]["row_values"] == [25, 30, 35]
+        assert data["shared_data"]["indicator_initializations"] == [
+            {
+                "indicator": {"type": "indicator", "name": "rsi", "period": 2},
+                "prior_candle_count": 3,
+                "history_start": "2023-12-31T21:00:00Z",
+            }
+        ]
+        assert "independent of other grid periods" in data["shared_data"]["warmup_policy"]
         assert "ranking" not in data and "winner" not in data
         assert "test" not in data["results"][0]
         assert data["configuration"]["evaluation_end"] == "2024-01-02T00:00:00Z"
