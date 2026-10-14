@@ -7,8 +7,8 @@ strategies and tests them on Binance historical candles. OpenAI interprets your
 request; Python calculates indicators, signals, trades, fees, and performance metrics.
 Use the CLI to explore a strategy or export JSON for your own research tools.
 
-Development milestone: **v0.4.0 — Strategy Comparison Engine** (unreleased).
-Latest release tag and package version: **v0.3.0**.
+Development milestone: **v0.5.0 — Out-of-Sample Validation** (unreleased).
+Latest release tag and package version: **v0.4.0**.
 
 ## Quick Start
 
@@ -107,6 +107,43 @@ resolved UTC window, warm-up policy, definitions, and a candle-history digest. A
 end makes the requested window repeatable; exact reproduction requires the same data.
 Multi-symbol comparisons and per-strategy overrides of shared trading settings are rejected.
 
+## Train/Test Validation
+
+Validate 1–5 fixed strategies on chronological Train and Test segments:
+
+```bash
+poetry run strategy-backtest validate \
+  'Validate RSI 30/70 and SMA 20/50 on BTCUSDT over 180 days using a 70/30 train/test split'
+poetry run strategy-backtest validate --config examples/validation.json
+poetry run strategy-backtest validate --config examples/validation.json --json
+```
+
+Config mode needs no OpenAI credentials. The [example](examples/validation.json)
+sets a fixed UTC end. One shared fetch includes the maximum indicator warm-up.
+Train receives the first `floor(completed evaluation candles × train_ratio)` candles;
+Test receives all remaining candles. Default ratio is 0.70, allowed range 0.50–0.90.
+Each segment needs at least two candles; insufficient history is rejected.
+
+Each segment starts flat with its own initial cash. Prior candles initialize causal
+indicators only. The first signal uses the first completed segment candle and executes
+at the next segment open. Final-candle signals never cross the split; open positions
+liquidate at their own segment's final close. No trades or equity carry into Test.
+Exact UTC boundaries, candle counts, warm-up and a full-history SHA256 are recorded.
+
+**Test is Held-out evaluation.** Select and freeze strategies before examining Test;
+repeated inspection or choosing strategies using Test contaminates the holdout.
+The return gap is `Test return − Train return`, in percentage points. It is descriptive:
+durations differ and total returns are not normalized. No winner or robustness score
+is assigned. A single holdout cannot establish robustness or future profitability.
+Parameter optimization is unsupported; walk-forward validation is future work.
+
+JSON contains `configuration`, `shared_data`, `split`, per-strategy `results` with
+independent Train/Test metrics and trades, `return_gap_pp`, and `methodology_warnings`.
+Undefined metrics are `null`; JSON stdout contains no progress messages.
+Fixed boundaries make the window repeatable; exact replay requires unchanged candles,
+including warm-up. See [ARCHITECTURE.md](ARCHITECTURE.md#chronological-out-of-sample-validation)
+for boundary policy and initialization limitations.
+
 ## Supported Strategies
 
 - Wilder RSI, SMA, EMA, completed candle close (`price`), and finite numeric constants
@@ -116,7 +153,7 @@ Multi-symbol comparisons and per-strategy overrides of shared trading settings a
 - Next-candle-open execution, entry/exit fees, and final-close liquidation
 - Return, buy-and-hold comparison, trade PnL, win rate, drawdown, and profit factor
 - Paginated Binance historical data, terminal summaries, JSON, and an offline demo
-- Single-symbol strategy comparisons with shared data and indicator preparation
+- Single-symbol strategy comparisons and chronological Train/Test validation
 
 DSL periods: RSI 2–500; SMA/EMA 2–1000. Rules are limited to 20 comparisons and depth 5.
 RSI defaults to period 14 when omitted; specify SMA/EMA periods. Use an explicit
@@ -206,11 +243,11 @@ The application does not place orders or connect to private trading endpoints.
 
 ## Roadmap: Strategy Research Agent
 
-Strategy comparison is implemented in the v0.4.0 development milestone. Planned next
+Strategy comparison and chronological holdout validation are implemented. Planned next
 research capabilities:
 
 - **Parameter sensitivity:** explore how results change across periods and thresholds.
-- **Out-of-sample validation:** separate development data from held-out evaluation periods.
+- **Walk-forward validation:** evaluate strategies across multiple chronological windows.
 - **Research reports:** summarize configurations, evidence, risks, and limitations in reproducible reports.
 
 ## Development

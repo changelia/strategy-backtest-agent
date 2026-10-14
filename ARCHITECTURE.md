@@ -475,9 +475,140 @@ single runs and cannot establish which strategy will be profitable in the future
 
 ### Release metadata
 
-Before this milestone, `pyproject.toml` declared 0.1.0 while the latest public Git tag
-was v0.3.0; the v0.3.0 tagged tree also carried the stale 0.1.0 metadata. A separate
-version-consistency commit synchronizes current package metadata to 0.3.0. Old tags
-are not rewritten. The v0.4.0 comparison milestone remains unreleased: no v0.4.0 tag,
-push or publication accompanies implementation. Assign its release version through
-the release workflow when it is ready to publish.
+The latest tag is v0.4.0 and `pyproject.toml` declares 0.4.0. There is no current
+package/tag mismatch. Earlier tags may retain historical metadata mismatches; they
+are not modified. The v0.5.0 implementation leaves the package version at 0.4.0 until
+a separate release workflow. No release tag, push or publication is part of this work.
+
+## Chronological out-of-sample validation
+
+`validation/models.py`, `engine.py`, `formatter.py` and `cli.py` add orchestration
+around the v0.4.0 comparison infrastructure. `SharedConfig` factors out existing
+shared trading assumptions, named DSL strategies and ID validation; `ComparisonConfig`
+retains its 2–5 strategy limit and sort field. `ValidationConfig` allows 1–5 strategies,
+has no ranking field and adds `train_ratio` (default 0.70, inclusive range 0.50–0.90).
+All config fields are strict, finite and extra-forbidden. Strategies reuse the same
+DSL or legacy RSI model; no new language or optimization parameters are introduced.
+
+`prepare_shared_history` factors the comparison engine's existing UTC resolution,
+maximum warm-up validation, normalized rules, unique indicator cache and streamed
+SHA256 metadata into one reusable function. Comparison outputs and accounting remain
+unchanged. Validation's engine imports no OpenAI modules. `fetch_and_validate` resolves
+UTC now once (or uses fixed `evaluation_end`) and calls the same `fetch_history` once.
+Binance may paginate that single shared fetch; there are no per-strategy or per-segment
+fetches. Direct `run_validation(candles, config, *, evaluation_end=None,
+data_source="provided")` supports offline replay, deriving an omitted end from the
+last candle open plus its interval. Conflicting or naive end overrides are rejected.
+
+### Exact split and execution policy
+
+1. Validate the full history with the existing continuous, completed-candle and
+   range-coverage rules. The requested start is end minus `period_days`; only fully
+   contained completed candles belong to evaluation. Prior history is warm-up.
+2. Let N be the count of evaluation candles and K = `floor(N * train_ratio)`
+   using decimal ratio arithmetic to avoid binary-float undercount at integer boundaries.
+   Train contains the first K evaluation candles; Test contains the remaining N−K.
+   There is no randomization, overlap or discarded eligible evaluation candle.
+   Reject if either count is less than two: a segment needs a completed signal candle
+   and a following execution candle. Do not modify the ratio or shorten the window.
+3. Record UTC half-open intervals: Train `[first Train open, first Test open)`;
+   Test `[first Test open, last Test open + interval)`. Train's last candle precedes
+   Test's first candle strictly. Requested start/end remain separately recorded in
+   shared metadata; interval alignment can make actual evaluation boundaries differ.
+4. Train's backtest receives only candles through its last candle and a correspondingly
+   truncated cache. Its final close liquidates any position using only Train prices.
+   A final Train entry or exit signal has no subsequent Train open and is discarded.
+5. Test's backtest receives preceding history for indicator values, with
+   `evaluation_start` at the first Test candle. `run_backtest` initializes cash to the
+   configured amount with no position, cost, entry, trades or equity from Train.
+   Signals preceding that index are ignored, including the last Train signal.
+6. Test's first possible signal uses its first completed candle close; its first
+   possible execution is at the second Test candle open. Its last signal cannot execute;
+   any remaining position liquidates at its own final close. Buy-and-hold buys at each
+   segment's first open and sells at its last close, charging both configured fees.
+
+Forced liquidation trade timestamps retain the backtester's candle-open convention;
+the segment's end records the actual completed interval boundary. A position can open
+at a segment's last open and liquidate at that same candle's close.
+
+### Indicator causality and portfolio isolation
+
+The union of RSI/SMA/EMA dependencies is calculated once per full validation run,
+using the existing indicators. These are causal series: SMA uses a trailing window,
+EMA uses `adjust=False` first-close recursion, and Wilder RSI uses a prior SMA seed
+and forward recurrence. The value at index i depends only on closes at indices ≤i.
+Full-series preparation is safe because future values cannot alter earlier prefixes.
+Train execution receives only its prefix, including truncated price and indicator
+arrays; it cannot index Test values. Tests compare full cached prefixes against
+independently prepared Train-only indicators and change all Test prices to verify
+unchanged Train results. No centered windows, future shifts or future-informed seeds
+are used. Adding new indicators requires equivalent causality tests.
+
+Test indicators retain all preceding Train and pre-Train closes for initialization,
+without recalculation or resetting the indicator seed. This history is excluded from
+Test equity, trade state and benchmark. Each sequential backtest call uses fresh local
+portfolio state; identical strategies also receive independent portfolios. Existing
+accounting, fees, open/close equity, drawdown and trade metrics are reused unchanged.
+
+Warm-up rules remain RSI p+1, SMA p, EMA 5p, taking the maximum across all strategies.
+Adding a longer-history strategy can move RSI/EMA seeds and change signals. Finite
+EMA and RSI initialization is not exact infinite-history initialization. Two candles
+per segment is an execution minimum, not statistical evidence of adequate sample size.
+
+### Results, parsing and interpretation
+
+`ChronologicalSplit` records ratio, UTC intervals, candle counts and rounding policy.
+`SegmentResult` records its interval, count, preceding history count, complete existing
+`BacktestResult` and `excess_return_pp`. `StrategyValidationResult` contains the normalized
+DSL and independent Train/Test results, with:
+
+```text
+return_gap_pp = test.total_return_percent - train.total_return_percent
+```
+
+`ValidationReport` contains configuration, shared metadata, split, ordered strategy
+results and methodology warnings. No strategy is ranked or automatically selected.
+The formatter labels Test **Held-out evaluation** and displays initial/final cash,
+returns, fee-adjusted buy-and-hold, excess return, drawdown, trades, win rate and profit
+factor for both segments. Null win rate means no trades; null profit factor means no
+losing trades (including zero trades), not infinity. Return gaps compare different
+segment lengths without duration normalization and are descriptive only.
+
+`parse_validation` reuses the existing structured Responses parsing boundary in one
+request for all strategies and settings. Nullable extraction fields distinguish omitted
+values from explicit invalid values; Python defaults and validates, assigns stable IDs,
+and revalidates SDK output. The prompt restricts output to configuration or rejection.
+Deterministic guards reject explicit optimization, tuning, randomization, walk-forward,
+folds and selection requests; structured rejection handles unsupported semantics,
+inconsistent settings, ambiguous grouping/splits and missing symbols. No trades, prices,
+performance, predicted profitability or executable Python are accepted in the schema.
+Natural-language interpretation can still be wrong; review and freeze the parsed DSL.
+
+The config path never imports the AI parser and needs no OpenAI credentials. CLI
+sources are mutually exclusive, errors use stderr and exit code 2, and `--json`
+emits exactly one JSON object without prompts, keys, raw SDK responses or progress.
+
+```bash
+poetry run strategy-backtest validate \
+  'Validate RSI 30/70 and SMA 20/50 on BTCUSDT over 180 days using a 70/30 train/test split'
+poetry run strategy-backtest validate --config examples/validation.json --json
+poetry run strategy-backtest validate --help
+```
+
+### Reproducibility and limitations
+
+Resolved requested UTC boundaries, actual segment intervals, all strategy definitions,
+shared warm-up, indicator union and full-history SHA256 are recorded. Hash encoding
+matches comparison: compact sorted-key JSON candle records with newline separators,
+including warm-up. Fixed `evaluation_end` plus archived identical candles reproduce
+results; a hash detects revisions but cannot recover prices. Binance history may change.
+
+Holdout validity depends on selecting and freezing rules before inspecting Test.
+Selecting among these strategies using Test results, repeatedly modifying rules after
+viewing Test, or relying on previously inspected historical prices contaminates the
+holdout. The software cannot prove the user's data was unseen. A single chronological
+split cannot establish robustness across regimes or guaranteed future profitability.
+No parameter optimization, walk-forward, cross-validation, normalized-return scoring
+or robustness score is included. Future walk-forward validation should preserve the
+same causal boundary and portfolio isolation rules. Existing full-fill, liquidity,
+slippage, spread, intrabar drawdown and exchange-constraint limitations remain.
