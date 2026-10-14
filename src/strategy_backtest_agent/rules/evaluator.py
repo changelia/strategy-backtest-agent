@@ -42,11 +42,14 @@ def dependencies(strategy: RuleStrategy) -> set[tuple[str, int]]:
     return found
 
 
+def indicator_warmup(name: str, period: int) -> int:
+    """Existing finite prior-close policy for a validated indicator dependency."""
+    return 5 * period if name == "ema" else period + (name == "rsi")
+
+
 def warmup_count(strategy: RuleStrategy) -> int:
     """EMA: five spans; RSI: period+1 closes; SMA: period closes."""
-    return max(
-        (5 * p if n == "ema" else p + (n == "rsi") for n, p in dependencies(strategy)), default=0
-    )
+    return max((indicator_warmup(n, p) for n, p in dependencies(strategy)), default=0)
 
 
 def prepare_indicators(candles: Sequence[Candle], strategy: RuleStrategy) -> Context:

@@ -176,8 +176,11 @@ and existing DSL complexity. Candidate order controls output and neighbor adjace
 Repeated indicators stay independent unless their exact paths are explicitly coupled.
 
 The default 70/30 chronological split reserves Test without evaluating it. All variants
-use the same Train boundaries, maximum warm-up, causal cache, fresh cash, fees and
-Train final-close liquidation. Test candles never reach indicators or backtests.
+use the same Train boundaries, one maximum-warm-up fetch, fresh cash, fees and
+Train final-close liquidation. Each indicator uses its own fixed prior-history window
+anchored to Train start, so adding longer grid periods cannot change existing seeds.
+RSI/EMA initialization remains finite; JSON records each indicator's initialization
+boundary. Test candles never reach indicators or backtests.
 Output includes per-variant metrics, min/median/max return, range, positive-return and
 buy-and-hold outperformance percentages, neighbor differences, and a 1D series or
 2D return matrix. JSON records the complete grid, definitions, split and history SHA256.

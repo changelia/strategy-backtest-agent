@@ -2,11 +2,11 @@
 
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import AwareDatetime, Field, model_validator
 
 from strategy_backtest_agent.comparison.models import MarketConfig, SharedData
 from strategy_backtest_agent.models import StrictModel
-from strategy_backtest_agent.rules.models import RuleStrategy
+from strategy_backtest_agent.rules.models import Indicator, RuleStrategy
 from strategy_backtest_agent.validation.models import ChronologicalSplit, SegmentResult
 
 MAX_VARIANTS = 25
@@ -14,6 +14,10 @@ MAX_DIMENSIONS = 3
 MIN_OBSERVATION_TRADES = 5
 SIMILARITY_TOLERANCE_PP = 5.0
 Number = int | float
+INITIALIZATION_POLICY = (
+    "indicator-local prior closes anchored at first Train open: RSI=p+1; SMA=p; "
+    "EMA=5*p (finite first-close seed); independent of other grid periods"
+)
 
 WARNINGS = (
     "All performance is in-sample sensitivity analysis on Train only. Test is reserved and "
@@ -24,10 +28,22 @@ WARNINGS = (
     "Zero-trade and low-trade configurations are not evidence of stability.",
     "Neighbor observations use declared candidate order, a 5 pp similarity tolerance and at "
     "least 5 trades per configuration. These are descriptive conventions, not significance tests.",
-    "RSI/EMA initialization is finite. Adding a longer-period variant changes shared warm-up "
-    "and can change indicator seeds. Fills exclude slippage, spreads and liquidity constraints; "
+    "RSI/EMA initialization is finite. Each indicator uses its own anchored prior history; "
+    "adding grid periods cannot move an existing indicator seed. "
+    "Fills exclude slippage, spreads and liquidity constraints; "
     "drawdown samples opens and closes, not intrabar extremes.",
 )
+
+
+class IndicatorInitialization(StrictModel):
+    indicator: Indicator
+    prior_candle_count: int = Field(ge=0)
+    history_start: AwareDatetime
+
+
+class SensitivitySharedData(SharedData):
+    warmup_policy: str = INITIALIZATION_POLICY
+    indicator_initializations: list[IndicatorInitialization]
 
 
 class NumericRange(StrictModel):
@@ -150,7 +166,7 @@ class SensitivitySummary(StrictModel):
 
 class SensitivityReport(StrictModel):
     configuration: SensitivityConfig
-    shared_data: SharedData
+    shared_data: SensitivitySharedData
     split: ChronologicalSplit
     parameters: list[ParameterDefinition]
     variants: list[ParameterVariant]

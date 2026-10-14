@@ -644,8 +644,17 @@ RSI p+1, SMA p, EMA 5p. The same Binance pagination and complete-history validat
 apply. Each generated strategy runs with identical market settings and Train boundaries.
 Base indicator references left unchanged in a variant still count toward its warm-up.
 
-`run_sensitivity` truncates history at the split **before** calling `prepare_context`.
-Unique `(indicator name, period)` cache keys prevent period collisions. Indicator
+`run_sensitivity` truncates history at the split **before** calling
+`sensitivity.cache.prepare_train_context`. Each unique `(indicator name, period)` uses
+only its own existing warm-up requirement immediately before first Train open. That
+requirement is reused through `rules.evaluator.indicator_warmup`, also used by
+`warmup_count`; indicator formulas are unchanged. `prepare_context` computes each
+series once from its anchored suffix. NaNs pad the unused earlier prefix to align the
+series with the common candle indices. This prefix is never evaluated. Unique keys
+prevent period collisions and adding a longer grid period cannot move another key's
+seed. Shared metadata records sorted `indicator_initializations` (indicator definition,
+prior candle count, UTC history start) and the sensitivity-specific `warmup_policy`.
+The maximum fetched warm-up count remains separately recorded. Indicator
 functions and backtests receive only prior history plus Train. Their first execution
 follows the first completed Train signal candle; final Train signals cannot execute
 on Test. Remaining positions liquidate at the final Train close. Every variant calls
@@ -802,10 +811,57 @@ history when exact replay matters. The application cannot prove data was never i
 
 Fixed UTC ends, complete strategy/grid definitions, split intervals, counts and full
 warm-up/history SHA256 make runs auditable. Exact reproduction requires identical
-candles and configuration; hashes do not recover data. Adding a longer-period variant
-can move the shared RSI/EMA seed. EMA uses a finite first-close seed; RSI uses its
-existing Wilder seed. Provider revisions, full-fill assumptions, absent slippage/spreads,
+candles and configuration; hashes do not recover data. Longer-period grid additions
+can change the requested history and digest, but cannot change existing indicator
+values or variant trades/metrics at fixed Train boundaries. Summary distributions and
+neighbor labels naturally change when variants/neighbors are added; those describe
+the new grid. Finite RSI/EMA seeds still depend on the prices inside each recorded
+initialization window. EMA uses its existing first-close seed; RSI uses its existing
+Wilder seed. This is deterministic finite initialization, not exact infinite-history
+convergence. Comparison and validation retain their prior shared-seed semantics, so
+cross-command results can differ for strategies with multiple indicator periods.
+Provider revisions, full-fill assumptions, absent slippage/spreads,
 unlimited liquidity, floating financial arithmetic and open/close-only drawdown remain
 limitations. Stop loss, take profit, leverage, shorts, MACD, crossover operators,
 multi-symbol analysis, automatic optimization, walk-forward and profitability predictions
 remain unsupported. Package version stays 0.5.0; v0.6.0 release operations are separate.
+
+
+### Final financial audit: grid stability
+
+The pre-audit sensitivity cache seeded every indicator from the earliest candle fetched
+for the entire grid. Increasing the grid's maximum RSI/EMA period extended prior history
+and moved the existing short-period seed. This did not use Test data, but it changed
+fixed variants' entry timing and return solely because another variant was added.
+That is a comparison/reproducibility defect: the grid changed both the parameter set
+and an unreported recursive initialization input.
+
+Regression fixtures use one unchanged timestamped price archive, a fixed 12-candle Train
+window and a fixed end. Compare period 2 alone with the grid [2, 6]. The provider filters
+that same archive to each requested historical range. Train/pre-Train overlapping candles
+are identical; no prices are revised. RSI's prior count extends from 3 to 7, EMA's from
+10 to 30. The EMA fixture includes extreme older prices to expose residual seed error.
+Both strategies enter below a fixed threshold (RSI 36.4 / EMA 104), use initial cash 1000
+and fee 0.01, and force-close at final Train close 160.
+
+| Original period-2 variant | Old first Train value alone | Old first value in larger grid | Old Train return alone / larger grid | Fixed Train return in both grids |
+| --- | --- | --- | --- | --- |
+| RSI | 33.333333 | 39.487179 | 42.574257% / 30.693069% | 42.574257% |
+| EMA | 100.895832 | 107.072143 | 42.574257% / 30.693069% | 42.574257% |
+
+Old entry timing shifted from 2024-01-01 01:00 UTC (open 110) to 03:00 UTC (open 120).
+The fixed original variant enters at 01:00 in both grids. Its final cash is
+`1000 / (110 * 1.01) * 160 * 0.99`. No indicator formulas, trade accounting or legacy
+command initialization policies changed. Sensitivity results for grids with different
+periods can change from pre-audit outputs; the report's policy and anchor metadata make
+that correction explicit. The 12 top-level JSON sections and all input fields remain;
+`shared_data.indicator_initializations` is additive metadata. Existing archived reports
+are not rewritten.
+
+`tests/test_sensitivity_audit.py` covers these recursive witnesses, individually anchored
+cache oracles, prefix causality, mixed RSI/EMA keys, initialization-window revisions and
+missing-history rejection. A separate parameterized test replaces **every** Test candle's
+OHLCV while preserving all earlier candles. It instruments indicator inputs, rule indices,
+backtest calls, closed trades and equity samples; all Train computations, variant definitions,
+summary/neighbor observations and matrix data remain identical. Only the full-history
+SHA256 differs. JSON/CLI and the pre-v0.6.0 regression suites continue to guard compatibility.

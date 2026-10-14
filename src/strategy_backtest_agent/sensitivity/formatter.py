@@ -28,6 +28,7 @@ def format_sensitivity(report: SensitivityReport) -> str:
         f"Initial balance per variant: {config.initial_balance:,.2f}; "
         f"fee per side: {config.fee * 100:g}%",
         f"Train candles: {split.train_candle_count}; warm-up: {report.shared_data.warmup_candles}",
+        f"Initialization: {report.shared_data.warmup_policy}",
         f"SHA256: {report.shared_data.candles_sha256}",
         "",
         "Base strategy:",

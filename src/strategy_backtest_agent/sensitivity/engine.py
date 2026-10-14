@@ -7,14 +7,17 @@ from strategy_backtest_agent.backtester import run_backtest
 from strategy_backtest_agent.comparison.engine import prepare_history
 from strategy_backtest_agent.market_data import MarketDataProvider
 from strategy_backtest_agent.models import Candle
-from strategy_backtest_agent.rules.evaluator import dependencies, prepare_context, warmup_count
+from strategy_backtest_agent.rules.evaluator import dependencies, warmup_count
 from strategy_backtest_agent.rules.history import fetch_history
 from strategy_backtest_agent.sensitivity.analysis import describe_grid
+from strategy_backtest_agent.sensitivity.cache import prepare_train_context
 from strategy_backtest_agent.sensitivity.grid import expand_grid
 from strategy_backtest_agent.sensitivity.models import (
+    INITIALIZATION_POLICY,
     WARNINGS,
     SensitivityConfig,
     SensitivityReport,
+    SensitivitySharedData,
     VariantResult,
 )
 from strategy_backtest_agent.validation.engine import chronological_split
@@ -37,7 +40,16 @@ def run_sensitivity(
     cut, split = chronological_split(candles, boundary, config.train_ratio, config.timeframe)
     train_candles = candles[:cut]
     # Test OHLC values are never supplied to indicator functions or the backtester.
-    cache = prepare_context(train_candles, set().union(*(dependencies(rule) for rule in rules)))
+    cache, initializations = prepare_train_context(
+        train_candles, boundary, set().union(*(dependencies(rule) for rule in rules))
+    )
+    sensitivity_data = SensitivitySharedData.model_validate(
+        {
+            **shared.model_dump(),
+            "warmup_policy": INITIALIZATION_POLICY,
+            "indicator_initializations": initializations,
+        }
+    )
     results = []
     for variant in variants:
         result = run_backtest(
@@ -67,7 +79,7 @@ def run_sensitivity(
     summary, neighbors, series, matrix = describe_grid(parameters, variants, results)
     return SensitivityReport(
         configuration=SensitivityConfig.model_validate(resolved.model_dump()),
-        shared_data=shared,
+        shared_data=sensitivity_data,
         split=split,
         parameters=parameters,
         variants=variants,
