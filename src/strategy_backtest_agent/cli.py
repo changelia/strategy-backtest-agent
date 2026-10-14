@@ -117,6 +117,11 @@ async def _run(
 
 def main() -> None:
     """Validate CLI input and run a single historical backtest."""
+    if sys.argv[1:2] == ["sensitivity"]:
+        from strategy_backtest_agent.sensitivity.cli import main as sensitivity_main
+
+        sensitivity_main(sys.argv[2:])
+        return
     if sys.argv[1:2] == ["validate"]:
         from strategy_backtest_agent.validation.cli import main as validation_main
 

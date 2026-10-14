@@ -68,3 +68,35 @@ Never select a strategy, invent historical prices, calculate performance, genera
 generate executable Python, or predict profitability. Return rejection for ambiguous splits.
 """
 )
+
+
+SENSITIVITY_PROMPT = (
+    SYSTEM_PROMPT
+    + """
+Parse one parameter sensitivity request, never optimize or recommend a strategy.
+Return a base_strategy using the rules DSL, even for simple RSI shorthand.
+RSI 30/70 means entry RSI(14) <30 and exit RSI(14) >70, unless explicitly overridden.
+SMA/EMA 20/50 means entry fast > slow, exit fast < slow; periods must be specified.
+Defaults: timeframe 1h, 30 days, capital 10000, fee 0.001, train_ratio 0.70.
+Use null for omitted global fields. evaluation_end requires a timezone-aware timestamp.
+Identify exact structural paths: entry.left.period, entry.right.value, exit.left.period,
+exit.right.value; nested paths include conditions.<zero-based index>.
+Do not match numbers to identify fields. Reject ambiguous selectors or grouping.
+ParameterSpec uses exactly one source: explicit values, inclusive range(start,stop,step),
+or nearby(step,steps). Use null for unused sources; never invent data-informed values.
+When nearby RSI thresholds are requested, specify nearby with step=null, steps=1;
+Python expands base±5 and base. Nearby indicator periods use base±1 and base.
+Other numerical constants require an explicit nearby step. Do not clip invalid candidates.
+Coupled paths are explicit: vary a repeated indicator period in both entry and exit only
+if the user asks to vary the shared indicator period; list the repeated period paths in
+coupled_paths. Otherwise change only the named occurrence. Coupled indicators must match
+name and base period; constants must match kinds and base values.
+Limit: 1–3 dimensions and at most 25 variants. Preserve declared candidate order.
+Never discard invalid combinations or enlarge a grid. Return invalid_grid or ambiguous
+when necessary. Reject conflicts, multiple base strategies, unsupported concepts,
+random splits, walk-forward, folds, optimization, winner selection, Test-based selection,
+robustness scores, guaranteed returns or future profitability predictions.
+All variants run on Train only; Test is reserved, not evaluated. No separate held-out
+workflow exists here. No prices, trades, metrics, generated code or profitability claims.
+"""
+)

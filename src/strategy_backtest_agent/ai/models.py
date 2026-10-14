@@ -10,6 +10,7 @@ from strategy_backtest_agent.models import BacktestConfig
 from strategy_backtest_agent.models import RSIStrategy as RSIStrategy
 from strategy_backtest_agent.models import StrictModel as StrictModel
 from strategy_backtest_agent.rules.models import RuleStrategy
+from strategy_backtest_agent.sensitivity.models import ParameterSpec, SensitivityConfig
 from strategy_backtest_agent.validation.models import ValidationConfig
 
 
@@ -169,6 +170,32 @@ class ValidationParserOutput(StrictModel):
 
     @model_validator(mode="after")
     def one_outcome(self) -> "ValidationParserOutput":
+        if (self.configuration is None) == (self.rejection is None):
+            raise ValueError("parser must return either configuration or rejection")
+        return self
+
+
+class SensitivityExtraction(StrictModel):
+    symbol: str | None
+    timeframe: str | None
+    period_days: int | None
+    initial_balance: float | None
+    fee: float | None
+    evaluation_end: AwareDatetime | None
+    train_ratio: float | None
+    base_strategy: RuleStrategy
+    parameters: list[ParameterSpec] = Field(min_length=1, max_length=3)
+
+    def validated_config(self) -> SensitivityConfig:
+        return SensitivityConfig.model_validate(self.model_dump(exclude_none=True))
+
+
+class SensitivityParserOutput(StrictModel):
+    configuration: SensitivityExtraction | None
+    rejection: Literal["unsupported", "ambiguous", "missing_symbol", "invalid_grid"] | None
+
+    @model_validator(mode="after")
+    def one_outcome(self) -> "SensitivityParserOutput":
         if (self.configuration is None) == (self.rejection is None):
             raise ValueError("parser must return either configuration or rejection")
         return self
