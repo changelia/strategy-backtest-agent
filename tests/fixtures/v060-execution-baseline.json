@@ -1,0 +1,1345 @@
+{
+  "source_commit": "d04a502f3e6cc212918129060656fbb94fc3f685",
+  "cases": [
+    {
+      "name": "legacy-fee-0.0",
+      "closes": [
+        10,
+        9,
+        8,
+        12,
+        13,
+        5,
+        4,
+        8,
+        9,
+        10,
+        9,
+        8,
+        12,
+        13,
+        5,
+        4,
+        8,
+        9,
+        10,
+        9,
+        8,
+        12,
+        13,
+        5,
+        4,
+        8,
+        9
+      ],
+      "config": {
+        "symbol": "BTCUSDT",
+        "timeframe": "1h",
+        "initial_balance": 1000.0,
+        "trading_fee": 0.0,
+        "rsi_period": 2,
+        "entry_rsi": 30,
+        "exit_rsi": 70
+      },
+      "strategy": null,
+      "evaluation_start": 0,
+      "expected": {
+        "initial_balance": 1000.0,
+        "final_balance": 17879.23177083333,
+        "total_return_percent": 1687.9231770833328,
+        "buy_and_hold_return_percent": -9.999999999999998,
+        "total_trades": 6,
+        "winning_trades": 6,
+        "losing_trades": 0,
+        "win_rate": 100.0,
+        "max_drawdown_percent": 0.0,
+        "profit_factor": null,
+        "trades": [
+          {
+            "entry_time": "2024-01-01T03:00:00Z",
+            "entry_price": 12.0,
+            "exit_time": "2024-01-01T04:00:00Z",
+            "exit_price": 13.0,
+            "quantity": 83.33333333333333,
+            "pnl": 83.33333333333326,
+            "pnl_percent": 8.333333333333325
+          },
+          {
+            "entry_time": "2024-01-01T06:00:00Z",
+            "entry_price": 4.0,
+            "exit_time": "2024-01-01T09:00:00Z",
+            "exit_price": 10.0,
+            "quantity": 270.8333333333333,
+            "pnl": 1624.9999999999998,
+            "pnl_percent": 150.0
+          },
+          {
+            "entry_time": "2024-01-01T12:00:00Z",
+            "entry_price": 12.0,
+            "exit_time": "2024-01-01T13:00:00Z",
+            "exit_price": 13.0,
+            "quantity": 225.69444444444443,
+            "pnl": 225.69444444444434,
+            "pnl_percent": 8.33333333333333
+          },
+          {
+            "entry_time": "2024-01-01T15:00:00Z",
+            "entry_price": 4.0,
+            "exit_time": "2024-01-01T18:00:00Z",
+            "exit_price": 10.0,
+            "quantity": 733.5069444444443,
+            "pnl": 4401.041666666666,
+            "pnl_percent": 150.0
+          },
+          {
+            "entry_time": "2024-01-01T21:00:00Z",
+            "entry_price": 12.0,
+            "exit_time": "2024-01-01T22:00:00Z",
+            "exit_price": 13.0,
+            "quantity": 611.255787037037,
+            "pnl": 611.2557870370365,
+            "pnl_percent": 8.333333333333327
+          },
+          {
+            "entry_time": "2024-01-02T00:00:00Z",
+            "entry_price": 4.0,
+            "exit_time": "2024-01-02T02:00:00Z",
+            "exit_price": 9.0,
+            "quantity": 1986.58130787037,
+            "pnl": 9932.906539351849,
+            "pnl_percent": 124.99999999999997
+          }
+        ]
+      }
+    },
+    {
+      "name": "legacy-fee-0.001",
+      "closes": [
+        10,
+        9,
+        8,
+        12,
+        13,
+        5,
+        4,
+        8,
+        9,
+        10,
+        9,
+        8,
+        12,
+        13,
+        5,
+        4,
+        8,
+        9,
+        10,
+        9,
+        8,
+        12,
+        13,
+        5,
+        4,
+        8,
+        9
+      ],
+      "config": {
+        "symbol": "BTCUSDT",
+        "timeframe": "1h",
+        "initial_balance": 1000.0,
+        "trading_fee": 0.001,
+        "rsi_period": 2,
+        "entry_rsi": 30,
+        "exit_rsi": 70
+      },
+      "strategy": null,
+      "evaluation_start": 0,
+      "expected": {
+        "initial_balance": 1000.0,
+        "final_balance": 17665.963089798854,
+        "total_return_percent": 1666.5963089798854,
+        "buy_and_hold_return_percent": -10.179820179820165,
+        "total_trades": 6,
+        "winning_trades": 6,
+        "losing_trades": 0,
+        "win_rate": 100.0,
+        "max_drawdown_percent": -0.10000000000000009,
+        "profit_factor": null,
+        "trades": [
+          {
+            "entry_time": "2024-01-01T03:00:00Z",
+            "entry_price": 12.0,
+            "exit_time": "2024-01-01T04:00:00Z",
+            "exit_price": 13.0,
+            "quantity": 83.25008325008326,
+            "pnl": 81.16883116883128,
+            "pnl_percent": 8.116883116883129
+          },
+          {
+            "entry_time": "2024-01-01T06:00:00Z",
+            "entry_price": 4.0,
+            "exit_time": "2024-01-01T09:00:00Z",
+            "exit_price": 10.0,
+            "quantity": 270.0221856066012,
+            "pnl": 1616.3528030411148,
+            "pnl_percent": 149.5004995004995
+          },
+          {
+            "entry_time": "2024-01-01T12:00:00Z",
+            "entry_price": 12.0,
+            "exit_time": "2024-01-01T13:00:00Z",
+            "exit_price": 13.0,
+            "quantity": 224.56890061687866,
+            "pnl": 218.95467810145738,
+            "pnl_percent": 8.116883116883143
+          },
+          {
+            "entry_time": "2024-01-01T15:00:00Z",
+            "entry_price": 4.0,
+            "exit_time": "2024-01-01T18:00:00Z",
+            "exit_price": 10.0,
+            "quantity": 728.3906873904605,
+            "pnl": 4360.146654719297,
+            "pnl_percent": 149.50049950049953
+          },
+          {
+            "entry_time": "2024-01-01T21:00:00Z",
+            "entry_price": 12.0,
+            "exit_time": "2024-01-01T22:00:00Z",
+            "exit_price": 13.0,
+            "quantity": 605.7794677847736,
+            "pnl": 590.6349810901547,
+            "pnl_percent": 8.116883116883123
+          },
+          {
+            "entry_time": "2024-01-02T00:00:00Z",
+            "entry_price": 4.0,
+            "exit_time": "2024-01-02T02:00:00Z",
+            "exit_price": 9.0,
+            "quantity": 1964.849637392821,
+            "pnl": 9798.705141677998,
+            "pnl_percent": 124.55044955044954
+          }
+        ]
+      }
+    },
+    {
+      "name": "legacy-fee-0.01",
+      "closes": [
+        10,
+        9,
+        8,
+        12,
+        13,
+        5,
+        4,
+        8,
+        9,
+        10,
+        9,
+        8,
+        12,
+        13,
+        5,
+        4,
+        8,
+        9,
+        10,
+        9,
+        8,
+        12,
+        13,
+        5,
+        4,
+        8,
+        9
+      ],
+      "config": {
+        "symbol": "BTCUSDT",
+        "timeframe": "1h",
+        "initial_balance": 1000.0,
+        "trading_fee": 0.01,
+        "rsi_period": 2,
+        "entry_rsi": 30,
+        "exit_rsi": 70
+      },
+      "strategy": null,
+      "evaluation_start": 0,
+      "expected": {
+        "initial_balance": 1000.0,
+        "final_balance": 15857.392616851383,
+        "total_return_percent": 1485.7392616851382,
+        "buy_and_hold_return_percent": -11.782178217821782,
+        "total_trades": 6,
+        "winning_trades": 6,
+        "losing_trades": 0,
+        "win_rate": 100.0,
+        "max_drawdown_percent": -1.0000000000000009,
+        "profit_factor": null,
+        "trades": [
+          {
+            "entry_time": "2024-01-01T03:00:00Z",
+            "entry_price": 12.0,
+            "exit_time": "2024-01-01T04:00:00Z",
+            "exit_price": 13.0,
+            "quantity": 82.5082508250825,
+            "pnl": 61.881188118811906,
+            "pnl_percent": 6.188118811881191
+          },
+          {
+            "entry_time": "2024-01-01T06:00:00Z",
+            "entry_price": 4.0,
+            "exit_time": "2024-01-01T09:00:00Z",
+            "exit_price": 10.0,
+            "quantity": 262.8418782472307,
+            "pnl": 1540.2534065287716,
+            "pnl_percent": 145.04950495049505
+          },
+          {
+            "entry_time": "2024-01-01T12:00:00Z",
+            "entry_price": 12.0,
+            "exit_time": "2024-01-01T13:00:00Z",
+            "exit_price": 13.0,
+            "quantity": 214.6975738158072,
+            "pnl": 161.02318036185488,
+            "pnl_percent": 6.188118811881168
+          },
+          {
+            "entry_time": "2024-01-01T15:00:00Z",
+            "entry_price": 4.0,
+            "exit_time": "2024-01-01T18:00:00Z",
+            "exit_price": 10.0,
+            "quantity": 683.9499443092669,
+            "pnl": 4007.9466736523036,
+            "pnl_percent": 145.04950495049502
+          },
+          {
+            "entry_time": "2024-01-01T21:00:00Z",
+            "entry_price": 12.0,
+            "exit_time": "2024-01-01T22:00:00Z",
+            "exit_price": 13.0,
+            "quantity": 558.671984213015,
+            "pnl": 419.0039881597604,
+            "pnl_percent": 6.188118811881176
+          },
+          {
+            "entry_time": "2024-01-02T00:00:00Z",
+            "entry_price": 4.0,
+            "exit_time": "2024-01-02T02:00:00Z",
+            "exit_price": 9.0,
+            "quantity": 1779.7298110944312,
+            "pnl": 8667.284180029881,
+            "pnl_percent": 120.54455445544556
+          }
+        ]
+      }
+    },
+    {
+      "name": "legacy-fee-0.25",
+      "closes": [
+        10,
+        9,
+        8,
+        12,
+        13,
+        5,
+        4,
+        8,
+        9,
+        10,
+        9,
+        8,
+        12,
+        13,
+        5,
+        4,
+        8,
+        9,
+        10,
+        9,
+        8,
+        12,
+        13,
+        5,
+        4,
+        8,
+        9
+      ],
+      "config": {
+        "symbol": "BTCUSDT",
+        "timeframe": "1h",
+        "initial_balance": 1000.0,
+        "trading_fee": 0.25,
+        "rsi_period": 2,
+        "entry_rsi": 30,
+        "exit_rsi": 70
+      },
+      "strategy": null,
+      "evaluation_start": 0,
+      "expected": {
+        "initial_balance": 1000.0,
+        "final_balance": 834.1734375000001,
+        "total_return_percent": -16.582656249999992,
+        "buy_and_hold_return_percent": -46.0,
+        "total_trades": 6,
+        "winning_trades": 3,
+        "losing_trades": 3,
+        "win_rate": 50.0,
+        "max_drawdown_percent": -57.75,
+        "profit_factor": 0.8380550553910948,
+        "trades": [
+          {
+            "entry_time": "2024-01-01T03:00:00Z",
+            "entry_price": 12.0,
+            "exit_time": "2024-01-01T04:00:00Z",
+            "exit_price": 13.0,
+            "quantity": 66.66666666666667,
+            "pnl": -350.0,
+            "pnl_percent": -35.0
+          },
+          {
+            "entry_time": "2024-01-01T06:00:00Z",
+            "entry_price": 4.0,
+            "exit_time": "2024-01-01T09:00:00Z",
+            "exit_price": 10.0,
+            "quantity": 130.0,
+            "pnl": 325.0,
+            "pnl_percent": 50.0
+          },
+          {
+            "entry_time": "2024-01-01T12:00:00Z",
+            "entry_price": 12.0,
+            "exit_time": "2024-01-01T13:00:00Z",
+            "exit_price": 13.0,
+            "quantity": 65.0,
+            "pnl": -341.25,
+            "pnl_percent": -35.0
+          },
+          {
+            "entry_time": "2024-01-01T15:00:00Z",
+            "entry_price": 4.0,
+            "exit_time": "2024-01-01T18:00:00Z",
+            "exit_price": 10.0,
+            "quantity": 126.75,
+            "pnl": 316.875,
+            "pnl_percent": 50.0
+          },
+          {
+            "entry_time": "2024-01-01T21:00:00Z",
+            "entry_price": 12.0,
+            "exit_time": "2024-01-01T22:00:00Z",
+            "exit_price": 13.0,
+            "quantity": 63.375,
+            "pnl": -332.71875,
+            "pnl_percent": -35.0
+          },
+          {
+            "entry_time": "2024-01-02T00:00:00Z",
+            "entry_price": 4.0,
+            "exit_time": "2024-01-02T02:00:00Z",
+            "exit_price": 9.0,
+            "quantity": 123.58125,
+            "pnl": 216.2671875000001,
+            "pnl_percent": 35.000000000000014
+          }
+        ]
+      }
+    },
+    {
+      "name": "rules-rsi",
+      "closes": [
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12
+      ],
+      "config": {
+        "symbol": "BTCUSDT",
+        "timeframe": "1h",
+        "initial_balance": 1000.0,
+        "trading_fee": 0.01,
+        "rsi_period": 2,
+        "entry_rsi": 30,
+        "exit_rsi": 70
+      },
+      "strategy": {
+        "type": "rules",
+        "entry": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "rsi",
+            "period": 2
+          },
+          "operator": "<",
+          "right": {
+            "type": "value",
+            "value": 50.0
+          }
+        },
+        "exit": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "rsi",
+            "period": 2
+          },
+          "operator": ">",
+          "right": {
+            "type": "value",
+            "value": 55.0
+          }
+        }
+      },
+      "evaluation_start": 3,
+      "expected": {
+        "initial_balance": 1000.0,
+        "final_balance": 70.11702423976593,
+        "total_return_percent": -92.9882975760234,
+        "buy_and_hold_return_percent": -15.98302687411599,
+        "total_trades": 9,
+        "winning_trades": 1,
+        "losing_trades": 8,
+        "win_rate": 11.11111111111111,
+        "max_drawdown_percent": -95.03239376528033,
+        "profit_factor": 0.011171709253618933,
+        "trades": [
+          {
+            "entry_time": "2024-01-01T05:00:00Z",
+            "entry_price": 10.0,
+            "exit_time": "2024-01-01T07:00:00Z",
+            "exit_price": 8.0,
+            "quantity": 99.00990099009901,
+            "pnl": -215.8415841584158,
+            "pnl_percent": -21.584158415841582
+          },
+          {
+            "entry_time": "2024-01-01T08:00:00Z",
+            "entry_price": 14.0,
+            "exit_time": "2024-01-01T09:00:00Z",
+            "exit_price": 9.0,
+            "quantity": 55.45674793787724,
+            "pnl": -290.038791715098,
+            "pnl_percent": -36.98727015558699
+          },
+          {
+            "entry_time": "2024-01-01T10:00:00Z",
+            "entry_price": 10.0,
+            "exit_time": "2024-01-01T12:00:00Z",
+            "exit_price": 8.0,
+            "quantity": 48.92273506202834,
+            "pnl": -106.65156243522176,
+            "pnl_percent": -21.584158415841582
+          },
+          {
+            "entry_time": "2024-01-01T13:00:00Z",
+            "entry_price": 14.0,
+            "exit_time": "2024-01-01T14:00:00Z",
+            "exit_price": 9.0,
+            "quantity": 27.402267446341188,
+            "pnl": -143.31385874436444,
+            "pnl_percent": -36.98727015558699
+          },
+          {
+            "entry_time": "2024-01-01T15:00:00Z",
+            "entry_price": 10.0,
+            "exit_time": "2024-01-01T17:00:00Z",
+            "exit_price": 8.0,
+            "quantity": 24.17368346008911,
+            "pnl": -52.69862994299427,
+            "pnl_percent": -21.58415841584159
+          },
+          {
+            "entry_time": "2024-01-01T18:00:00Z",
+            "entry_price": 14.0,
+            "exit_time": "2024-01-01T19:00:00Z",
+            "exit_price": 9.0,
+            "quantity": 13.539998090799555,
+            "pnl": -70.81419001488169,
+            "pnl_percent": -36.98727015558699
+          },
+          {
+            "entry_time": "2024-01-01T20:00:00Z",
+            "entry_price": 10.0,
+            "exit_time": "2024-01-01T22:00:00Z",
+            "exit_price": 8.0,
+            "quantity": 11.944691385051886,
+            "pnl": -26.0394272194131,
+            "pnl_percent": -21.584158415841575
+          },
+          {
+            "entry_time": "2024-01-01T23:00:00Z",
+            "entry_price": 14.0,
+            "exit_time": "2024-01-02T00:00:00Z",
+            "exit_price": 9.0,
+            "quantity": 6.690378767299218,
+            "pnl": -34.99068095297491,
+            "pnl_percent": -36.98727015558699
+          },
+          {
+            "entry_time": "2024-01-02T01:00:00Z",
+            "entry_price": 10.0,
+            "exit_time": "2024-01-02T02:00:00Z",
+            "exit_price": 12.0,
+            "quantity": 5.9021064174887155,
+            "pnl": 10.505749423129899,
+            "pnl_percent": 17.6237623762376
+          }
+        ]
+      }
+    },
+    {
+      "name": "rules-sma",
+      "closes": [
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12
+      ],
+      "config": {
+        "symbol": "BTCUSDT",
+        "timeframe": "1h",
+        "initial_balance": 1000.0,
+        "trading_fee": 0.01,
+        "rsi_period": 2,
+        "entry_rsi": 30,
+        "exit_rsi": 70
+      },
+      "strategy": {
+        "type": "rules",
+        "entry": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "sma",
+            "period": 3
+          },
+          "operator": "<",
+          "right": {
+            "type": "value",
+            "value": 50.0
+          }
+        },
+        "exit": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "sma",
+            "period": 3
+          },
+          "operator": ">",
+          "right": {
+            "type": "value",
+            "value": 55.0
+          }
+        }
+      },
+      "evaluation_start": 3,
+      "expected": {
+        "initial_balance": 1000.0,
+        "final_balance": 1306.930693069307,
+        "total_return_percent": 30.6930693069307,
+        "buy_and_hold_return_percent": -15.98302687411599,
+        "total_trades": 1,
+        "winning_trades": 1,
+        "losing_trades": 0,
+        "win_rate": 100.0,
+        "max_drawdown_percent": -42.85714285714286,
+        "profit_factor": null,
+        "trades": [
+          {
+            "entry_time": "2024-01-01T04:00:00Z",
+            "entry_price": 9.0,
+            "exit_time": "2024-01-02T02:00:00Z",
+            "exit_price": 12.0,
+            "quantity": 110.01100110011001,
+            "pnl": 306.9306930693069,
+            "pnl_percent": 30.693069306930692
+          }
+        ]
+      }
+    },
+    {
+      "name": "rules-ema",
+      "closes": [
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14,
+        9,
+        10,
+        12,
+        8,
+        14
+      ],
+      "config": {
+        "symbol": "BTCUSDT",
+        "timeframe": "1h",
+        "initial_balance": 1000.0,
+        "trading_fee": 0.01,
+        "rsi_period": 2,
+        "entry_rsi": 30,
+        "exit_rsi": 70
+      },
+      "strategy": {
+        "type": "rules",
+        "entry": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "ema",
+            "period": 2
+          },
+          "operator": "<",
+          "right": {
+            "type": "value",
+            "value": 50.0
+          }
+        },
+        "exit": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "ema",
+            "period": 2
+          },
+          "operator": ">",
+          "right": {
+            "type": "value",
+            "value": 55.0
+          }
+        }
+      },
+      "evaluation_start": 10,
+      "expected": {
+        "initial_balance": 1000.0,
+        "final_balance": 1143.5643564356433,
+        "total_return_percent": 14.356435643564325,
+        "buy_and_hold_return_percent": 37.22772277227722,
+        "total_trades": 1,
+        "winning_trades": 1,
+        "losing_trades": 0,
+        "win_rate": 100.0,
+        "max_drawdown_percent": -42.85714285714285,
+        "profit_factor": null,
+        "trades": [
+          {
+            "entry_time": "2024-01-01T11:00:00Z",
+            "entry_price": 12.0,
+            "exit_time": "2024-01-02T09:00:00Z",
+            "exit_price": 14.0,
+            "quantity": 82.5082508250825,
+            "pnl": 143.56435643564328,
+            "pnl_percent": 14.356435643564328
+          }
+        ]
+      }
+    },
+    {
+      "name": "demo-30",
+      "days": 30,
+      "config": {
+        "symbol": "BTCUSDT",
+        "timeframe": "1h",
+        "initial_balance": 10000,
+        "trading_fee": 0.001,
+        "rsi_period": 14,
+        "entry_rsi": 30,
+        "exit_rsi": 70
+      },
+      "strategy": null,
+      "evaluation_start": 0,
+      "expected": {
+        "initial_balance": 10000.0,
+        "final_balance": 4725.851861349121,
+        "total_return_percent": -52.741481386508795,
+        "buy_and_hold_return_percent": 0.9961388611388733,
+        "total_trades": 8,
+        "winning_trades": 0,
+        "losing_trades": 8,
+        "win_rate": 0.0,
+        "max_drawdown_percent": -52.86515231600908,
+        "profit_factor": 0.0,
+        "trades": [
+          {
+            "entry_time": "2024-06-02T17:00:00Z",
+            "entry_price": 31346.866070657004,
+            "exit_time": "2024-06-04T16:00:00Z",
+            "exit_price": 28543.5,
+            "quantity": 0.31869246410445423,
+            "pnl": -912.4982491836763,
+            "pnl_percent": -9.124982491836763
+          },
+          {
+            "entry_time": "2024-06-06T16:00:00Z",
+            "entry_price": 31567.5,
+            "exit_time": "2024-06-08T16:00:00Z",
+            "exit_price": 28591.499999999996,
+            "quantity": 0.287587655895742,
+            "pnl": -873.1618497367617,
+            "pnl_percent": -9.608381639743028
+          },
+          {
+            "entry_time": "2024-06-10T16:00:00Z",
+            "entry_price": 31615.5,
+            "exit_time": "2024-06-12T16:00:00Z",
+            "exit_price": 28639.5,
+            "quantity": 0.259560461397487,
+            "pnl": -788.091748720426,
+            "pnl_percent": -9.594097130273996
+          },
+          {
+            "entry_time": "2024-06-14T16:00:00Z",
+            "entry_price": 31663.50000000001,
+            "exit_time": "2024-06-16T16:00:00Z",
+            "exit_price": 28687.5,
+            "quantity": 0.234302250952551,
+            "pnl": -711.4238739820312,
+            "pnl_percent": -9.579855929754103
+          },
+          {
+            "entry_time": "2024-06-18T16:00:00Z",
+            "entry_price": 31711.5,
+            "exit_time": "2024-06-20T16:00:00Z",
+            "exit_price": 28735.5,
+            "quantity": 0.21153575712958675,
+            "pnl": -642.3171151288616,
+            "pnl_percent": -9.5656578415199
+          },
+          {
+            "entry_time": "2024-06-22T16:00:00Z",
+            "entry_price": 31759.500000000004,
+            "exit_time": "2024-06-24T16:00:00Z",
+            "exit_price": 28783.500000000007,
+            "quantity": 0.19101184598390142,
+            "pnl": -580.0156838394932,
+            "pnl_percent": -9.551502670097094
+          },
+          {
+            "entry_time": "2024-06-26T16:00:00Z",
+            "entry_price": 31807.500000000004,
+            "exit_time": "2024-06-28T16:00:00Z",
+            "exit_price": 28831.500000000007,
+            "quantity": 0.17250662500774397,
+            "pnl": -523.8403452568891,
+            "pnl_percent": -9.537390221191185
+          },
+          {
+            "entry_time": "2024-06-30T16:00:00Z",
+            "entry_price": 31855.500000000004,
+            "exit_time": "2024-06-30T23:00:00Z",
+            "exit_price": 30359.499999999996,
+            "quantity": 0.15581885221406525,
+            "pnl": -242.79927280274023,
+            "pnl_percent": -4.886623476819843
+          }
+        ]
+      }
+    },
+    {
+      "name": "demo-180",
+      "days": 180,
+      "config": {
+        "symbol": "BTCUSDT",
+        "timeframe": "1h",
+        "initial_balance": 10000,
+        "trading_fee": 0.001,
+        "rsi_period": 14,
+        "entry_rsi": 30,
+        "exit_rsi": 70
+      },
+      "strategy": null,
+      "evaluation_start": 0,
+      "expected": {
+        "initial_balance": 10000.0,
+        "final_balance": 123.09493440255116,
+        "total_return_percent": -98.76905065597448,
+        "buy_and_hold_return_percent": 6.9841508491508275,
+        "total_trades": 45,
+        "winning_trades": 0,
+        "losing_trades": 45,
+        "win_rate": 0.0,
+        "max_drawdown_percent": -98.82843173277227,
+        "profit_factor": 0.0,
+        "trades": [
+          {
+            "entry_time": "2024-01-04T17:00:00Z",
+            "entry_price": 31346.866070657004,
+            "exit_time": "2024-01-06T16:00:00Z",
+            "exit_price": 28543.5,
+            "quantity": 0.31869246410445423,
+            "pnl": -912.4982491836763,
+            "pnl_percent": -9.124982491836763
+          },
+          {
+            "entry_time": "2024-01-08T16:00:00Z",
+            "entry_price": 31567.5,
+            "exit_time": "2024-01-10T16:00:00Z",
+            "exit_price": 28591.499999999996,
+            "quantity": 0.287587655895742,
+            "pnl": -873.1618497367617,
+            "pnl_percent": -9.608381639743028
+          },
+          {
+            "entry_time": "2024-01-12T16:00:00Z",
+            "entry_price": 31615.5,
+            "exit_time": "2024-01-14T16:00:00Z",
+            "exit_price": 28639.5,
+            "quantity": 0.259560461397487,
+            "pnl": -788.091748720426,
+            "pnl_percent": -9.594097130273996
+          },
+          {
+            "entry_time": "2024-01-16T16:00:00Z",
+            "entry_price": 31663.50000000001,
+            "exit_time": "2024-01-18T16:00:00Z",
+            "exit_price": 28687.5,
+            "quantity": 0.234302250952551,
+            "pnl": -711.4238739820312,
+            "pnl_percent": -9.579855929754103
+          },
+          {
+            "entry_time": "2024-01-20T16:00:00Z",
+            "entry_price": 31711.5,
+            "exit_time": "2024-01-22T16:00:00Z",
+            "exit_price": 28735.5,
+            "quantity": 0.21153575712958675,
+            "pnl": -642.3171151288616,
+            "pnl_percent": -9.5656578415199
+          },
+          {
+            "entry_time": "2024-01-24T16:00:00Z",
+            "entry_price": 31759.500000000004,
+            "exit_time": "2024-01-26T16:00:00Z",
+            "exit_price": 28783.500000000007,
+            "quantity": 0.19101184598390142,
+            "pnl": -580.0156838394932,
+            "pnl_percent": -9.551502670097094
+          },
+          {
+            "entry_time": "2024-01-28T16:00:00Z",
+            "entry_price": 31807.500000000004,
+            "exit_time": "2024-01-30T16:00:00Z",
+            "exit_price": 28831.500000000007,
+            "quantity": 0.17250662500774397,
+            "pnl": -523.8403452568891,
+            "pnl_percent": -9.537390221191185
+          },
+          {
+            "entry_time": "2024-02-01T16:00:00Z",
+            "entry_price": 31855.500000000004,
+            "exit_time": "2024-02-03T16:00:00Z",
+            "exit_price": 28879.500000000007,
+            "quantity": 0.15581885221406525,
+            "pnl": -473.1805621782787,
+            "pnl_percent": -9.523320301678812
+          },
+          {
+            "entry_time": "2024-02-05T16:00:00Z",
+            "entry_price": 31903.500000000004,
+            "exit_time": "2024-02-07T16:00:00Z",
+            "exit_price": 28927.499999999985,
+            "quantity": 0.14076761459968973,
+            "pnl": -427.487455812392,
+            "pnl_percent": -9.509292719598836
+          },
+          {
+            "entry_time": "2024-02-09T16:00:00Z",
+            "entry_price": 31951.500000000004,
+            "exit_time": "2024-02-11T16:00:00Z",
+            "exit_price": 28975.499999999985,
+            "quantity": 0.12719024762418746,
+            "pnl": -386.2674971465826,
+            "pnl_percent": -9.495307284143536
+          },
+          {
+            "entry_time": "2024-02-13T16:00:00Z",
+            "entry_price": 31999.500000000004,
+            "exit_time": "2024-02-15T16:00:00Z",
+            "exit_price": 29023.500000000004,
+            "quantity": 0.11494047036463614,
+            "pnl": -349.076852128218,
+            "pnl_percent": -9.481363805650114
+          },
+          {
+            "entry_time": "2024-02-17T16:00:00Z",
+            "entry_price": 32047.499999999985,
+            "exit_time": "2024-02-19T16:00:00Z",
+            "exit_price": 29071.499999999985,
+            "quantity": 0.1038867137040007,
+            "pnl": -315.5163120379807,
+            "pnl_percent": -9.467462095592214
+          },
+          {
+            "entry_time": "2024-02-21T16:00:00Z",
+            "entry_price": 32095.500000000007,
+            "exit_time": "2024-02-23T16:00:00Z",
+            "exit_price": 29119.500000000004,
+            "quantity": 0.0939106213176896,
+            "pnl": -285.22674772540677,
+            "pnl_percent": -9.453601966571078
+          },
+          {
+            "entry_time": "2024-02-25T16:00:00Z",
+            "entry_price": 32143.500000000025,
+            "exit_time": "2024-02-27T16:00:00Z",
+            "exit_price": 29167.500000000022,
+            "quantity": 0.08490570537067892,
+            "pnl": -257.8850328851222,
+            "pnl_percent": -9.439783232307377
+          },
+          {
+            "entry_time": "2024-02-29T16:00:00Z",
+            "entry_price": 32191.500000000007,
+            "exit_time": "2024-03-02T16:00:00Z",
+            "exit_price": 29215.5,
+            "quantity": 0.07677614075463327,
+            "pnl": -233.20038736110882,
+            "pnl_percent": -9.426005707632862
+          },
+          {
+            "entry_time": "2024-03-04T16:00:00Z",
+            "entry_price": 32239.500000000025,
+            "exit_time": "2024-03-06T16:00:00Z",
+            "exit_price": 29263.49999999998,
+            "quantity": 0.06943568340580988,
+            "pnl": -210.9110966522005,
+            "pnl_percent": -9.412269208482046
+          },
+          {
+            "entry_time": "2024-03-08T16:00:00Z",
+            "entry_price": 32287.500000000047,
+            "exit_time": "2024-03-10T16:00:00Z",
+            "exit_price": 29311.5,
+            "quantity": 0.06280669977253309,
+            "pnl": -190.78156842234966,
+            "pnl_percent": -9.398573551883787
+          },
+          {
+            "entry_time": "2024-03-12T16:00:00Z",
+            "entry_price": 32335.499999999993,
+            "exit_time": "2024-03-14T16:00:00Z",
+            "exit_price": 29359.49999999998,
+            "quantity": 0.056819295865558304,
+            "pnl": -172.59969095432757,
+            "pnl_percent": -9.384918555953513
+          },
+          {
+            "entry_time": "2024-03-16T16:00:00Z",
+            "entry_price": 32383.50000000001,
+            "exit_time": "2024-03-18T16:00:00Z",
+            "exit_price": 29407.499999999964,
+            "quantity": 0.051410535543413245,
+            "pnl": -156.17446217896304,
+            "pnl_percent": -9.371304039885391
+          },
+          {
+            "entry_time": "2024-03-20T16:00:00Z",
+            "entry_price": 32431.499999999993,
+            "exit_time": "2024-03-22T16:00:00Z",
+            "exit_price": 29455.499999999978,
+            "quantity": 0.04652373877356569,
+            "pnl": -141.33386121161175,
+            "pnl_percent": -9.357729823943268
+          },
+          {
+            "entry_time": "2024-03-24T16:00:00Z",
+            "entry_price": 32479.50000000001,
+            "exit_time": "2024-03-26T16:00:00Z",
+            "exit_price": 29503.500000000033,
+            "quantity": 0.04210785158305474,
+            "pnl": -127.92293727584229,
+            "pnl_percent": -9.344195729454041
+          },
+          {
+            "entry_time": "2024-03-28T16:00:00Z",
+            "entry_price": 32527.499999999993,
+            "exit_time": "2024-03-30T16:00:00Z",
+            "exit_price": 29551.499999999978,
+            "quantity": 0.038116880281550025,
+            "pnl": -115.80209352889165,
+            "pnl_percent": -9.33070157879938
+          },
+          {
+            "entry_time": "2024-04-01T16:00:00Z",
+            "entry_price": 32575.50000000005,
+            "exit_time": "2024-04-03T16:00:00Z",
+            "exit_price": 29599.499999999996,
+            "quantity": 0.034509383316797794,
+            "pnl": -104.84554565851386,
+            "pnl_percent": -9.317247195407301
+          },
+          {
+            "entry_time": "2024-04-05T16:00:00Z",
+            "entry_price": 32623.500000000033,
+            "exit_time": "2024-04-07T16:00:00Z",
+            "exit_price": 29647.500000000015,
+            "quantity": 0.031248014817008812,
+            "pnl": -94.93993722608866,
+            "pnl_percent": -9.303832403745082
+          },
+          {
+            "entry_time": "2024-04-09T16:00:00Z",
+            "entry_price": 32671.500000000015,
+            "exit_time": "2024-04-11T16:00:00Z",
+            "exit_price": 29695.499999999956,
+            "quantity": 0.028299114495775612,
+            "pnl": -85.98309561318786,
+            "pnl_percent": -9.290457029312163
+          },
+          {
+            "entry_time": "2024-04-13T16:00:00Z",
+            "entry_price": 32719.499999999996,
+            "exit_time": "2024-04-15T16:00:00Z",
+            "exit_price": 29743.499999999975,
+            "quantity": 0.025632339150474807,
+            "pnl": -77.8829141121696,
+            "pnl_percent": -9.277120898631065
+          },
+          {
+            "entry_time": "2024-04-17T16:00:00Z",
+            "entry_price": 32767.499999999978,
+            "exit_time": "2024-04-19T16:00:00Z",
+            "exit_price": 29791.499999999993,
+            "quantity": 0.02322033148182786,
+            "pnl": -70.55634720709088,
+            "pnl_percent": -9.263823839241498
+          },
+          {
+            "entry_time": "2024-04-21T16:00:00Z",
+            "entry_price": 32815.50000000003,
+            "exit_time": "2024-04-23T16:00:00Z",
+            "exit_price": 29839.499999999938,
+            "quantity": 0.02103842240663857,
+            "pnl": -63.92850743804627,
+            "pnl_percent": -9.250565679692432
+          },
+          {
+            "entry_time": "2024-04-25T16:00:00Z",
+            "entry_price": 32863.50000000009,
+            "exit_time": "2024-04-27T16:00:00Z",
+            "exit_price": 29887.50000000003,
+            "quantity": 0.019064363433286047,
+            "pnl": -57.93185344726248,
+            "pnl_percent": -9.23734624953317
+          },
+          {
+            "entry_time": "2024-04-29T16:00:00Z",
+            "entry_price": 32911.5,
+            "exit_time": "2024-05-01T16:00:00Z",
+            "exit_price": 29935.499999999975,
+            "quantity": 0.017278086025310394,
+            "pnl": -52.50545988375666,
+            "pnl_percent": -9.224165379308763
+          },
+          {
+            "entry_time": "2024-05-03T16:00:00Z",
+            "entry_price": 32959.499999999985,
+            "exit_time": "2024-05-05T16:00:00Z",
+            "exit_price": 29983.499999999993,
+            "quantity": 0.01566148519683622,
+            "pnl": -47.594360808528904,
+            "pnl_percent": -9.211022900550933
+          },
+          {
+            "entry_time": "2024-05-07T16:00:00Z",
+            "entry_price": 33007.50000000004,
+            "exit_time": "2024-05-09T16:00:00Z",
+            "exit_price": 30031.499999999935,
+            "quantity": 0.014198224868608294,
+            "pnl": -43.14895910647192,
+            "pnl_percent": -9.197918645771704
+          },
+          {
+            "entry_time": "2024-05-11T16:00:00Z",
+            "entry_price": 33055.500000000015,
+            "exit_time": "2024-05-13T16:00:00Z",
+            "exit_price": 30079.499999999953,
+            "quantity": 0.012873562768597357,
+            "pnl": -39.124495184741875,
+            "pnl_percent": -9.184852448454745
+          },
+          {
+            "entry_time": "2024-05-15T16:00:00Z",
+            "entry_price": 33103.50000000007,
+            "exit_time": "2024-05-17T16:00:00Z",
+            "exit_price": 30127.500000000044,
+            "quantity": 0.011674192889646181,
+            "pnl": -35.48056893019253,
+            "pnl_percent": -9.171824143050804
+          },
+          {
+            "entry_time": "2024-05-19T16:00:00Z",
+            "entry_price": 33151.499999999985,
+            "exit_time": "2024-05-21T16:00:00Z",
+            "exit_price": 30175.49999999999,
+            "quantity": 0.010588103721280098,
+            "pnl": -32.180709518887056,
+            "pnl_percent": -9.158833564969033
+          },
+          {
+            "entry_time": "2024-05-23T16:00:00Z",
+            "entry_price": 33199.500000000044,
+            "exit_time": "2024-05-25T16:00:00Z",
+            "exit_price": 30223.500000000007,
+            "quantity": 0.009604450656126974,
+            "pnl": -29.191988226597744,
+            "pnl_percent": -9.145880550570471
+          },
+          {
+            "entry_time": "2024-05-27T16:00:00Z",
+            "entry_price": 33247.50000000002,
+            "exit_time": "2024-05-29T16:00:00Z",
+            "exit_price": 30271.49999999995,
+            "quantity": 0.008713441135630984,
+            "pnl": -26.484669887132554,
+            "pnl_percent": -9.132964937160942
+          },
+          {
+            "entry_time": "2024-05-31T16:00:00Z",
+            "entry_price": 33295.5,
+            "exit_time": "2024-06-02T16:00:00Z",
+            "exit_price": 30319.499999999967,
+            "quantity": 0.00790623124690827,
+            "pnl": -24.03189909157129,
+            "pnl_percent": -9.120086562984334
+          },
+          {
+            "entry_time": "2024-06-04T16:00:00Z",
+            "entry_price": 33343.50000000006,
+            "exit_time": "2024-06-06T16:00:00Z",
+            "exit_price": 30367.499999999913,
+            "quantity": 0.00717483261448447,
+            "pnl": -21.809417621408215,
+            "pnl_percent": -9.107245267216884
+          },
+          {
+            "entry_time": "2024-06-08T16:00:00Z",
+            "entry_price": 33391.49999999997,
+            "exit_time": "2024-06-10T16:00:00Z",
+            "exit_price": 30415.500000000004,
+            "quantity": 0.0065120285488716205,
+            "pnl": -19.79530996705958,
+            "pnl_percent": -9.094440889957625
+          },
+          {
+            "entry_time": "2024-06-12T16:00:00Z",
+            "entry_price": 33439.50000000003,
+            "exit_time": "2024-06-14T16:00:00Z",
+            "exit_price": 30463.500000000022,
+            "quantity": 0.005911298519924623,
+            "pnl": -17.9697741046144,
+            "pnl_percent": -9.081673272226345
+          },
+          {
+            "entry_time": "2024-06-16T16:00:00Z",
+            "entry_price": 33487.50000000001,
+            "exit_time": "2024-06-18T16:00:00Z",
+            "exit_price": 30511.499999999967,
+            "quantity": 0.0053667501179451285,
+            "pnl": -16.31491499180325,
+            "pnl_percent": -9.068942255952432
+          },
+          {
+            "entry_time": "2024-06-20T16:00:00Z",
+            "entry_price": 33535.50000000006,
+            "exit_time": "2024-06-22T16:00:00Z",
+            "exit_price": 30559.50000000006,
+            "quantity": 0.004873057750719667,
+            "pnl": -14.814558502674117,
+            "pnl_percent": -9.056247683970536
+          },
+          {
+            "entry_time": "2024-06-24T16:00:00Z",
+            "entry_price": 33583.49999999997,
+            "exit_time": "2024-06-26T16:00:00Z",
+            "exit_price": 30607.5,
+            "quantity": 0.0044254074011145245,
+            "pnl": -13.454083752201626,
+            "pnl_percent": -9.043589400014344
+          },
+          {
+            "entry_time": "2024-06-28T16:00:00Z",
+            "entry_price": 33631.50000000003,
+            "exit_time": "2024-06-30T16:00:00Z",
+            "exit_price": 30655.499999999945,
+            "quantity": 0.004019446838417462,
+            "pnl": -12.22027197003203,
+            "pnl_percent": -9.030967248709775
+          }
+        ]
+      }
+    }
+  ]
+}
