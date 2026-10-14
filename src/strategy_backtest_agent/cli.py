@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from strategy_backtest_agent.backtester import run_backtest
 from strategy_backtest_agent.demo import demo_candles
+from strategy_backtest_agent.execution import format_costs, format_execution
 from strategy_backtest_agent.market_data import TIMEFRAMES, BinanceMarketData, MarketDataError
 from strategy_backtest_agent.models import BacktestConfig
 from strategy_backtest_agent.rules.evaluator import dependencies, warmup_count
@@ -113,10 +114,19 @@ async def _run(
         "N/A (no losing trades)" if result.profit_factor is None else f"{result.profit_factor:.2f}"
     )
     print(f"Profit Factor: {factor}")
+    print(format_execution(config.execution_config()))
+    print(format_costs(result.costs))
+    for warning in result.execution_warnings:
+        print(warning)
 
 
 def main() -> None:
     """Validate CLI input and run a single historical backtest."""
+    if sys.argv[1:2] == ["costs"]:
+        from strategy_backtest_agent.costs.cli import main as costs_main
+
+        costs_main(sys.argv[2:])
+        return
     if sys.argv[1:2] == ["sensitivity"]:
         from strategy_backtest_agent.sensitivity.cli import main as sensitivity_main
 
@@ -172,6 +182,9 @@ def main() -> None:
     parser.add_argument(
         "--demo", action="store_true", help="Use deterministic synthetic offline candles"
     )
+    from strategy_backtest_agent.execution_cli import add_cost_arguments
+
+    add_cost_arguments(parser)
     args = parser.parse_args()
     try:
         if args.days <= 0:
@@ -182,6 +195,11 @@ def main() -> None:
                 "timeframe": args.timeframe,
                 "initial_balance": args.balance,
                 "trading_fee": args.fee,
+                "execution": {
+                    "fee_rate": args.fee,
+                    "spread_bps": args.spread_bps or 0,
+                    "slippage_bps": args.slippage_bps or 0,
+                },
                 "rsi_period": args.rsi_period,
                 "entry_rsi": args.entry_rsi,
                 "exit_rsi": args.exit_rsi,
@@ -213,9 +231,12 @@ def _ai_main() -> None:
         action="store_true",
         help="Emit input, parsed_strategy, and backtest_result as JSON",
     )
+    from strategy_backtest_agent.execution_cli import add_cost_arguments, override_execution
+
+    add_cost_arguments(parser)
     args = parser.parse_args(sys.argv[2:])
     try:
-        parsed = parse_strategy(args.text)
+        parsed = override_execution(parse_strategy(args.text), args)
         context: dict[str, object] = {
             "input": args.text,
             "parsed_strategy": parsed.model_dump(mode="json"),

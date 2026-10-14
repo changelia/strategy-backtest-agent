@@ -1,0 +1,64 @@
+{
+  "symbol": "BTCUSDT",
+  "timeframe": "1h",
+  "period_days": 180,
+  "train_ratio": 0.7,
+  "initial_balance": 10000,
+  "fee": 0.001,
+  "evaluation_end": "2024-07-01T00:00:00Z",
+  "scenarios": [
+    {
+      "id": "baseline",
+      "name": "Baseline",
+      "spread_bps": 0,
+      "slippage_bps": 0
+    },
+    {
+      "id": "low",
+      "name": "Low",
+      "spread_bps": 5,
+      "slippage_bps": 2
+    },
+    {
+      "id": "medium",
+      "name": "Medium",
+      "spread_bps": 10,
+      "slippage_bps": 5
+    },
+    {
+      "id": "high",
+      "name": "High",
+      "spread_bps": 20,
+      "slippage_bps": 10
+    }
+  ],
+  "strategy": {
+    "type": "rules",
+    "entry": {
+      "type": "comparison",
+      "left": {
+        "type": "indicator",
+        "name": "rsi",
+        "period": 14
+      },
+      "operator": "<",
+      "right": {
+        "type": "value",
+        "value": 30
+      }
+    },
+    "exit": {
+      "type": "comparison",
+      "left": {
+        "type": "indicator",
+        "name": "rsi",
+        "period": 14
+      },
+      "operator": ">",
+      "right": {
+        "type": "value",
+        "value": 70
+      }
+    }
+  }
+}
