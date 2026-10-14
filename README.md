@@ -192,6 +192,39 @@ are flagged, including zero trades. Repeated experimentation can overfit Train.
 a robustness test or a profitability prediction. Freeze a preselected strategy before
 separately running `validate`; the software cannot prove its Test data was unseen.
 
+## Execution Costs (v0.7.0 development)
+
+The package remains v0.6.0 pending review and release. Added costs default to zero,
+preserving its numerical results. Fees remain 0.1% per executed side by default.
+
+```bash
+poetry run strategy-backtest --demo --spread-bps 20 --slippage-bps 10
+poetry run strategy-backtest ai \
+  'Backtest BTCUSDT on 1h for 180 days using RSI 30/70, with 10 bps spread and 5 bps slippage.'
+poetry run strategy-backtest validate --config examples/validation.json --spread-bps 10 --slippage-bps 5 --json
+poetry run strategy-backtest costs --config examples/execution-scenarios.json --json
+```
+
+The same flags work for explicit backtests, AI, compare, validate and sensitivity.
+JSON configs accept `{"execution": {"spread_bps": 10, "slippage_bps": 5}}`; omitted
+`fee_rate` inherits legacy `fee` (`fee_rate` in AI configuration). Conflicting explicit
+fee settings are rejected. Config-only workflows need no OpenAI key.
+
+**Spread is the full bid/ask spread**, with half applied on each side. Slippage is
+adverse per side. With 20 bps spread and 10 bps slippage, buy reference 100 fills
+at 100.20; sell reference 110 fills at 109.78. Fees are charged separately.
+OHLC prices are mid-price proxies, not measured quotes or actual historical fills.
+
+Open positions retain reference-price equity valuation; costs apply only to fills.
+Buy & Hold buys at the first evaluation open and sells at the final close using
+the same costs. Reports separate charged fees from modeled spread/slippage amounts.
+
+[Cost scenarios](examples/execution-scenarios.json) evaluate one frozen DSL strategy
+on Train only, sharing data and indicators with fresh portfolios. Declare 2–8 ordered
+scenarios; the first has zero spread/slippage and supplies the comparison baseline.
+Fees inherit the shared rate unless explicitly varied. These illustrative assumptions
+are neither Binance cost estimates nor an optimization or recommendation.
+
 ## Supported Strategies
 
 - Wilder RSI, SMA, EMA, completed candle close (`price`), and finite numeric constants
@@ -283,7 +316,8 @@ poetry run strategy-backtest --demo --days 30 --json
 ## Limitations
 
 Backtests assume full fills, fractional quantities, and unlimited liquidity. They
-exclude slippage, spreads, funding, taxes, and exchange lot-size constraints.
+model constant spread/slippage only when configured, and exclude funding, taxes,
+and exchange lot-size constraints.
 Drawdown samples candle opens and closes, not intrabar highs and lows. Binance data
 availability depends on history, network access, rate limits, and regional restrictions.
 Legacy/direct candle runs can span missing intervals; the rule-history fetch rejects gaps.

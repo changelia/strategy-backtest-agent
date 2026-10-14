@@ -819,7 +819,7 @@ initialization window. EMA uses its existing first-close seed; RSI uses its exis
 Wilder seed. This is deterministic finite initialization, not exact infinite-history
 convergence. Comparison and validation retain their prior shared-seed semantics, so
 cross-command results can differ for strategies with multiple indicator periods.
-Provider revisions, full-fill assumptions, absent slippage/spreads,
+Provider revisions, full-fill assumptions, fixed modeled spread/slippage,
 unlimited liquidity, floating financial arithmetic and open/close-only drawdown remain
 limitations. Stop loss, take profit, leverage, shorts, MACD, crossover operators,
 multi-symbol analysis, automatic optimization, walk-forward and profitability predictions
@@ -864,3 +864,100 @@ OHLCV while preserving all earlier candles. It instruments indicator inputs, rul
 backtest calls, closed trades and equity samples; all Train computations, variant definitions,
 summary/neighbor observations and matrix data remain identical. Only the full-history
 SHA256 differs. JSON/CLI and the pre-v0.6.0 regression suites continue to guard compatibility.
+
+## Deterministic execution costs (v0.7.0 development)
+
+The package version stays 0.6.0 until a separate release. `models.ExecutionConfig`
+and `execution.quote_execution` provide one strict execution implementation for all
+engines. Strategy rules, indicators, next-open timing and initialization formulas
+are unchanged. Legacy configs containing only `fee` remain valid; nested
+`execution.fee_rate` inherits that alias when omitted. Explicit conflicting aliases
+fail validation. An explicit nested rate must also satisfy the enclosing model's
+historical fee limits (research MarketConfig retains its 5% cap).
+
+For reference P, define a = (spread_bps / 2 + slippage_bps) / 10000.
+Buy fill is P × (1+a); sell fill is P × (1−a). Spread is FULL bid/ask
+spread; slippage is adverse PER SIDE. All inputs must be finite and nonnegative,
+fee_rate < 1, and half-spread + slippage < 10000 bps. Computed fills must be
+finite and positive; overflow/underflow is rejected rather than clipped.
+
+OHLC prices serve as mid-price proxies; historical Binance OHLCV does not reveal
+bid/ask quotes. A modeled fill may be outside the candle's high/low. This is a
+constant-cost research assumption, not reconstruction of actual fills or liquidity.
+
+### Accounting, marking and benchmark
+
+With available cash C and fee f, entry quantity is C / (buy_fill × (1+f)).
+Entry fee is quantity × buy_fill × f; remaining cash is zero, without leverage.
+Exit cash is quantity × sell_fill × (1−f); exit fee is quantity × sell_fill × f.
+Trade PnL is exit cash minus cash allocated at entry, including both fees and
+adjusted fills. Win rate and profit factor use this actual net PnL. Signals from
+completed N execute at N+1 OPEN; forced liquidation instead uses the segment's
+final CLOSE and applies one sell adjustment. Positions/signals never cross a split.
+
+For example, C=1000, reference buy=100, sell=110, full spread=20 bps,
+slippage=10 bps, f=0.001: fills are 100.20 and 109.78,
+quantity=1000/(100.20×1.001), and final cash=quantity×109.78×0.999.
+Financial arithmetic remains binary floating point; oracle tests use independent
+Decimal arithmetic with explicit tolerances.
+
+Equity retains the historical reference-price policy: cash + quantity × candle
+open/close. No hypothetical liquidation fees or repeated spread/slippage deductions
+are applied to marks. Executed exits and final-close liquidation replace the mark
+with actual cash, so final equity reconciles to final balance. Drawdown samples
+opens/closes and cannot capture intrabar extremes. Nonfinite marks are rejected.
+
+Buy & Hold remains first evaluation OPEN to final CLOSE, using identical buy/sell
+costs and its own entry quantity. Its net return retains the exact original operation
+order when spread/slippage are zero. Its attribution is reported separately under
+`benchmark_costs`; it never enters strategy cost totals. Historical in-range legacy
+RSI initialization still counts toward its benchmark window, as before.
+
+Trade fields retain their names; entry_price/exit_price are actual fills. Additive
+entry_execution/exit_execution record reference, fill, quantity, fee, per-unit spread
+and slippage adjustment, modeled monetary amounts, and forced liquidation.
+Result costs sum actual fills using each trade's quantity, including compounded
+quantity changes between trades. Charged fees are cash deductions; modeled spread
+and slippage are attribution relative to reference, not separately observed charges.
+They are already included through fills and must not be deducted a second time.
+Their sum is not generally the return loss versus baseline: changed sizing and fees
+also affect the counterfactual. Zero-trade portfolios have zero charged/model costs.
+
+### Shared research engines and cost scenarios
+
+Comparison applies one execution configuration to all strategies. Validation applies
+it to fresh Train/Test portfolios. Sensitivity retains its v0.6.0 indicator-local
+RSI/EMA anchored seeds and evaluates variants on Train only. Costs do not enter DSL
+signals or indicator cache keys, which remain (indicator name, period).
+
+The config-only `costs` command is separate because scenario-specific assumptions
+must be declared explicitly rather than mixed with strategy parameter grids.
+`costs.models.CostScenarioConfig` reuses MarketConfig and one frozen RuleStrategy,
+with 2–8 unique ordered scenario IDs. First scenario must have zero spread/slippage.
+A scenario may explicitly vary fee_rate (<1); otherwise the shared fee is inherited.
+Shared nonzero spread/slippage is rejected to avoid ambiguous scenario overrides.
+There is no parameter grid, sorting, optimization, winner or recommendation.
+
+`costs.engine` reuses comparison history preparation, v0.5.0 chronological split,
+v0.6.0 prepare_train_context, and the existing backtester. One fetch includes the
+strategy's maximum warm-up; each unique indicator is initialized once using its
+anchored prior window. Data is truncated at Train end before preparing indicators
+or running independent portfolios. No Test strategy evaluation occurs. Test values
+affect only integrity validation and the complete-history SHA256, not Train results
+or baseline differences. Default split is 70/30; existing sufficient-history checks
+apply. The full-history hash and fixed UTC boundaries preserve auditability.
+
+Scenario JSON records config, history digest/anchors, split, baseline ID, all resolved
+scenario assumptions and Train results with cost totals and return differences in
+percentage points. Output order follows declared order. Undefined metrics are null;
+nonfinite outputs fail validation. CLI JSON stdout contains one object and errors use
+stderr. All original commands accept --spread-bps / --slippage-bps; explicit flags
+override parsed/config values while preserving the effective fee. AI extracts only
+explicit supplied costs, defaults omitted costs to zero, and is prevented from
+inventing spread/slippage assumptions. Python alone computes fills and economics.
+
+See `examples/execution-scenarios.json`. Scenario magnitudes are illustrative, not
+measured exchange costs. Constant costs omit time variation, market impact,
+order-book dynamics, partial fills, liquidity limits, funding, taxes and exchange
+quantity constraints. Finite RSI/EMA initialization and historical differences
+between command warm-up policies remain documented limitations.
