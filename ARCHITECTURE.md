@@ -475,7 +475,7 @@ single runs and cannot establish which strategy will be profitable in the future
 
 ### Release metadata
 
-The v0.6.0 release tag and `pyproject.toml` package version are aligned at 0.6.0.
+The v0.7.0 release tag and `pyproject.toml` package version are aligned at 0.7.0.
 Earlier tags may retain historical metadata mismatches; they are not modified.
 The release follows the financial audit, quality gates and a fast-forward main merge.
 
@@ -865,9 +865,9 @@ backtest calls, closed trades and equity samples; all Train computations, varian
 summary/neighbor observations and matrix data remain identical. Only the full-history
 SHA256 differs. JSON/CLI and the pre-v0.6.0 regression suites continue to guard compatibility.
 
-## Deterministic execution costs (v0.7.0 development)
+## Deterministic execution costs (v0.7.0)
 
-The package version stays 0.6.0 until a separate release. `models.ExecutionConfig`
+The package version is 0.7.0. `models.ExecutionConfig`
 and `execution.quote_execution` provide one strict execution implementation for all
 engines. Strategy rules, indicators, next-open timing and initialization formulas
 are unchanged. Legacy configs containing only `fee` remain valid; nested

@@ -7,8 +7,8 @@ strategies and tests them on Binance historical candles. OpenAI interprets your
 request; Python calculates indicators, signals, trades, fees, and performance metrics.
 Use the CLI to explore a strategy or export JSON for your own research tools.
 
-Current release: **v0.6.0 — Parameter Sensitivity Analysis**.
-Release tag and package version: **v0.6.0**.
+Current release: **v0.7.0 — Realistic Execution Modeling**.
+Release tag and package version: **v0.7.0**.
 
 ## Quick Start
 
@@ -192,10 +192,9 @@ are flagged, including zero trades. Repeated experimentation can overfit Train.
 a robustness test or a profitability prediction. Freeze a preselected strategy before
 separately running `validate`; the software cannot prove its Test data was unseen.
 
-## Execution Costs (v0.7.0 development)
+## Execution Costs
 
-The package remains v0.6.0 pending review and release. Added costs default to zero,
-preserving its numerical results. Fees remain 0.1% per executed side by default.
+Added costs default to zero, preserving v0.6.0 numerical results. Fees remain 0.1% per executed side by default.
 
 ```bash
 poetry run strategy-backtest --demo --spread-bps 20 --slippage-bps 10
