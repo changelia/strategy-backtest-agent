@@ -20,9 +20,11 @@ from strategy_backtest_agent.ai.models import (
     AIStrategyConfig,
     ComparisonParserOutput,
     ParserOutput,
+    ValidationParserOutput,
 )
-from strategy_backtest_agent.ai.prompts import COMPARISON_PROMPT, SYSTEM_PROMPT
+from strategy_backtest_agent.ai.prompts import COMPARISON_PROMPT, SYSTEM_PROMPT, VALIDATION_PROMPT
 from strategy_backtest_agent.comparison.models import ComparisonConfig
+from strategy_backtest_agent.validation.models import ValidationConfig
 
 DEFAULT_MODEL = "gpt-6-luna"
 
@@ -59,7 +61,7 @@ def create_client() -> OpenAI:
 
 
 OutputT = TypeVar("OutputT", bound=BaseModel)
-ConfigT = TypeVar("ConfigT", AIStrategyConfig, ComparisonConfig)
+ConfigT = TypeVar("ConfigT", AIStrategyConfig, ComparisonConfig, ValidationConfig)
 
 
 def _strategy_configuration(output: ParserOutput) -> AIStrategyConfig:
@@ -91,6 +93,33 @@ def parse_comparison(text: str) -> ComparisonConfig:
         ComparisonParserOutput,
         COMPARISON_PROMPT,
         _comparison_configuration,
+        max_output_tokens=16384,
+    )
+
+
+def _validation_configuration(output: ValidationParserOutput) -> ValidationConfig:
+    if output.rejection is not None:
+        raise StrategyParseError(f"Request rejected: {output.rejection.replace('_', ' ')}")
+    assert output.configuration is not None
+    return output.configuration.validated_config()
+
+
+def parse_validation(text: str) -> ValidationConfig:
+    """One extraction request; holdout execution and results remain entirely in Python."""
+    if re.search(
+        r"\b(?:random|shuffl\w*|optimi[sz]\w*|tun(?:e|ing)|walk[- ]forward|folds?)\b"
+        r"|\brobustness\s+score\b|\b(?:select|choose|pick|winner|best)\b",
+        text,
+        re.IGNORECASE,
+    ):
+        raise StrategyParseError(
+            "Unsupported validation: optimization, selection or nonchronological split"
+        )
+    return _parse_request(
+        text,
+        ValidationParserOutput,
+        VALIDATION_PROMPT,
+        _validation_configuration,
         max_output_tokens=16384,
     )
 

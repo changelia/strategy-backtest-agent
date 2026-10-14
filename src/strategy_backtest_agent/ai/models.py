@@ -10,6 +10,7 @@ from strategy_backtest_agent.models import BacktestConfig
 from strategy_backtest_agent.models import RSIStrategy as RSIStrategy
 from strategy_backtest_agent.models import StrictModel as StrictModel
 from strategy_backtest_agent.rules.models import RuleStrategy
+from strategy_backtest_agent.validation.models import ValidationConfig
 
 
 class AIStrategyConfig(StrictModel):
@@ -133,6 +134,41 @@ class ComparisonParserOutput(StrictModel):
 
     @model_validator(mode="after")
     def one_outcome(self) -> "ComparisonParserOutput":
+        if (self.configuration is None) == (self.rejection is None):
+            raise ValueError("parser must return either configuration or rejection")
+        return self
+
+
+class ValidationExtraction(StrictModel):
+    symbol: str | None
+    timeframe: str | None
+    period_days: int | None
+    initial_balance: float | None
+    fee: float | None
+    strategies: list[ComparisonStrategyExtraction] = Field(min_length=1, max_length=5)
+    evaluation_end: AwareDatetime | None
+    train_ratio: float | None
+
+    def validated_config(self) -> ValidationConfig:
+        values = self.model_dump(exclude_none=True)
+        values["strategies"] = [
+            {"id": f"strategy-{i}", **item.model_dump()}
+            for i, item in enumerate(self.strategies, start=1)
+        ]
+        return ValidationConfig.model_validate(values)
+
+
+class ValidationParserOutput(StrictModel):
+    configuration: ValidationExtraction | None
+    rejection: (
+        Literal[
+            "unsupported", "ambiguous", "missing_symbol", "inconsistent_settings", "strategy_count"
+        ]
+        | None
+    )
+
+    @model_validator(mode="after")
+    def one_outcome(self) -> "ValidationParserOutput":
         if (self.configuration is None) == (self.rejection is None):
             raise ValueError("parser must return either configuration or rejection")
         return self
