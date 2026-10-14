@@ -52,15 +52,14 @@ class NamedStrategy(StrictModel):
         return rules
 
 
-class ComparisonConfig(StrictModel):
+class SharedConfig(StrictModel):
     symbol: str = Field(pattern=r"^[A-Z0-9]{5,20}$")
     timeframe: str = "1h"
     period_days: int = Field(default=30, gt=0, le=365)
     initial_balance: float = Field(default=10000, gt=0)
     fee: float = Field(default=0.001, ge=0, le=0.05)
-    strategies: list[NamedStrategy] = Field(min_length=2, max_length=5)
+    strategies: list[NamedStrategy] = Field(min_length=1, max_length=5)
     evaluation_end: AwareDatetime | None = None
-    sort_by: RankingCriterion = "total_return"
 
     @field_validator("timeframe")
     @classmethod
@@ -75,7 +74,7 @@ class ComparisonConfig(StrictModel):
         return value.astimezone(UTC) if value is not None else None
 
     @model_validator(mode="after")
-    def unique_ids(self) -> "ComparisonConfig":
+    def unique_ids(self) -> "SharedConfig":
         ids = [strategy.id for strategy in self.strategies]
         if len(ids) != len(set(ids)):
             raise ValueError("strategy IDs must be unique")
@@ -90,6 +89,11 @@ class ComparisonConfig(StrictModel):
                 "trading_fee": self.fee,
             }
         )
+
+
+class ComparisonConfig(SharedConfig):
+    strategies: list[NamedStrategy] = Field(min_length=2, max_length=5)
+    sort_by: RankingCriterion = "total_return"
 
 
 class SharedData(Model):
