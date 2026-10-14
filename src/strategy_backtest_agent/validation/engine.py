@@ -20,6 +20,28 @@ from strategy_backtest_agent.validation.models import (
 )
 
 
+def chronological_split(
+    candles: Sequence[Candle], boundary: int, ratio: float, timeframe: str
+) -> tuple[int, ChronologicalSplit]:
+    """Shared v0.5.0 completed-candle split policy, including execution minimums."""
+    count = len(candles) - boundary
+    train_size = train_count(count, ratio)
+    if min(train_size, count - train_size) < 2:
+        raise ValueError("insufficient evaluation history: each segment needs at least 2 candles")
+    cut = boundary + train_size
+    duration = interval_duration(timeframe)
+    split = ChronologicalSplit(
+        train_ratio=ratio,
+        train_start=candles[boundary].timestamp,
+        train_end=candles[cut].timestamp,
+        test_start=candles[cut].timestamp,
+        test_end=candles[-1].timestamp + duration,
+        train_candle_count=train_size,
+        test_candle_count=count - train_size,
+    )
+    return cut, split
+
+
 def run_validation(
     candles: Sequence[Candle],
     config: ValidationConfig,
@@ -38,21 +60,7 @@ def run_validation(
     resolved, boundary, rules, context, shared = prepare_shared_history(
         candles, config, evaluation_end=evaluation_end, data_source=data_source
     )
-    count = shared.candle_count
-    train_size = train_count(count, config.train_ratio)
-    if min(train_size, count - train_size) < 2:
-        raise ValueError("insufficient evaluation history: each segment needs at least 2 candles")
-    cut = boundary + train_size
-    duration = interval_duration(config.timeframe)
-    split = ChronologicalSplit(
-        train_ratio=config.train_ratio,
-        train_start=candles[boundary].timestamp,
-        train_end=candles[cut].timestamp,
-        test_start=candles[cut].timestamp,
-        test_end=candles[-1].timestamp + duration,
-        train_candle_count=train_size,
-        test_candle_count=count - train_size,
-    )
+    cut, split = chronological_split(candles, boundary, config.train_ratio, config.timeframe)
     train_context = Context(
         context.prices[:cut], {key: values[:cut] for key, values in context.indicators.items()}
     )

@@ -52,13 +52,12 @@ class NamedStrategy(StrictModel):
         return rules
 
 
-class SharedConfig(StrictModel):
+class MarketConfig(StrictModel):
     symbol: str = Field(pattern=r"^[A-Z0-9]{5,20}$")
     timeframe: str = "1h"
     period_days: int = Field(default=30, gt=0, le=365)
     initial_balance: float = Field(default=10000, gt=0)
     fee: float = Field(default=0.001, ge=0, le=0.05)
-    strategies: list[NamedStrategy] = Field(min_length=1, max_length=5)
     evaluation_end: AwareDatetime | None = None
 
     @field_validator("timeframe")
@@ -73,13 +72,6 @@ class SharedConfig(StrictModel):
     def utc_end(cls, value: datetime | None) -> datetime | None:
         return value.astimezone(UTC) if value is not None else None
 
-    @model_validator(mode="after")
-    def unique_ids(self) -> "SharedConfig":
-        ids = [strategy.id for strategy in self.strategies]
-        if len(ids) != len(set(ids)):
-            raise ValueError("strategy IDs must be unique")
-        return self
-
     def to_backtest_config(self) -> BacktestConfig:
         return BacktestConfig.model_validate(
             {
@@ -89,6 +81,17 @@ class SharedConfig(StrictModel):
                 "trading_fee": self.fee,
             }
         )
+
+
+class SharedConfig(MarketConfig):
+    strategies: list[NamedStrategy] = Field(min_length=1, max_length=5)
+
+    @model_validator(mode="after")
+    def unique_ids(self) -> "SharedConfig":
+        ids = [strategy.id for strategy in self.strategies]
+        if len(ids) != len(set(ids)):
+            raise ValueError("strategy IDs must be unique")
+        return self
 
 
 class ComparisonConfig(SharedConfig):

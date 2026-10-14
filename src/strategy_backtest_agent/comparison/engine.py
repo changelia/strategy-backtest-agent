@@ -9,6 +9,7 @@ from strategy_backtest_agent.backtester import run_backtest
 from strategy_backtest_agent.comparison.models import (
     ComparisonConfig,
     ComparisonResult,
+    MarketConfig,
     RankingCriterion,
     SharedConfig,
     SharedData,
@@ -50,14 +51,15 @@ def rank_results(results: Sequence[StrategyResult], criterion: RankingCriterion)
     return [item.id for item in sorted(results, key=key)]
 
 
-def prepare_shared_history(
+def prepare_history(
     candles: Sequence[Candle],
-    config: SharedConfig,
+    config: MarketConfig,
+    rules: list[RuleStrategy],
     *,
     evaluation_end: datetime | None = None,
     data_source: str = "provided",
-) -> tuple[SharedConfig, int, list[RuleStrategy], Context, SharedData]:
-    """Reusable comparison/validation history, causal cache and reproducibility metadata."""
+) -> tuple[MarketConfig, int, SharedData]:
+    """Validate shared history and record metadata without preparing indicator values."""
     if not candles:
         raise ValueError("requires completed historical candles")
     duration = interval_duration(config.timeframe)
@@ -69,11 +71,10 @@ def prepare_shared_history(
         raise ValueError("evaluation_end conflicts with configured boundary")
     resolved_config = type(config).model_validate({**config.model_dump(), "evaluation_end": end})
     start = end - timedelta(days=config.period_days)
-    rules = normalized_strategies(config)
+    rules = [RuleStrategy.model_validate(rule.model_dump()) for rule in rules]
     required = max(map(warmup_count, rules))
     boundary = validate_history(candles, config.timeframe, start, end, required)
     keys = set().union(*(dependencies(rule) for rule in rules))
-    context = prepare_context(candles, keys)
     # Hash all initialization and evaluation data so revisions to provider history are detectable.
     digest = hashlib.sha256()
     for candle in candles:
@@ -100,7 +101,23 @@ def prepare_shared_history(
         ],
         candles_sha256=digest.hexdigest(),
     )
-    return resolved_config, boundary, rules, context, shared
+    return resolved_config, boundary, shared
+
+
+def prepare_shared_history(
+    candles: Sequence[Candle],
+    config: SharedConfig,
+    *,
+    evaluation_end: datetime | None = None,
+    data_source: str = "provided",
+) -> tuple[MarketConfig, int, list[RuleStrategy], Context, SharedData]:
+    """Prepare the existing comparison/validation cache and full-history metadata."""
+    rules = normalized_strategies(config)
+    resolved, boundary, shared = prepare_history(
+        candles, config, rules, evaluation_end=evaluation_end, data_source=data_source
+    )
+    keys = set().union(*(dependencies(rule) for rule in rules))
+    return resolved, boundary, rules, prepare_context(candles, keys), shared
 
 
 def run_comparison(
