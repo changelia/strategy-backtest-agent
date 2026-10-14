@@ -1,0 +1,64 @@
+{
+  "symbol": "BTCUSDT",
+  "timeframe": "1h",
+  "period_days": 180,
+  "train_ratio": 0.7,
+  "initial_balance": 10000,
+  "fee": 0.001,
+  "evaluation_end": "2024-07-01T00:00:00Z",
+  "base_strategy": {
+    "type": "rules",
+    "entry": {
+      "type": "comparison",
+      "left": {
+        "type": "indicator",
+        "name": "sma",
+        "period": 20
+      },
+      "operator": ">",
+      "right": {
+        "type": "indicator",
+        "name": "sma",
+        "period": 50
+      }
+    },
+    "exit": {
+      "type": "comparison",
+      "left": {
+        "type": "indicator",
+        "name": "sma",
+        "period": 20
+      },
+      "operator": "<",
+      "right": {
+        "type": "indicator",
+        "name": "sma",
+        "period": 50
+      }
+    }
+  },
+  "parameters": [
+    {
+      "path": "entry.left.period",
+      "coupled_paths": [
+        "exit.left.period"
+      ],
+      "range": {
+        "start": 10,
+        "stop": 20,
+        "step": 5
+      }
+    },
+    {
+      "path": "entry.right.period",
+      "coupled_paths": [
+        "exit.right.period"
+      ],
+      "values": [
+        40,
+        50,
+        60
+      ]
+    }
+  ]
+}

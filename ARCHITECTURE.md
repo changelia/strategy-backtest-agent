@@ -475,9 +475,9 @@ single runs and cannot establish which strategy will be profitable in the future
 
 ### Release metadata
 
-The latest tag is v0.4.0 and `pyproject.toml` declares 0.4.0. There is no current
+The latest tag is v0.5.0 and `pyproject.toml` declares 0.5.0. There is no current
 package/tag mismatch. Earlier tags may retain historical metadata mismatches; they
-are not modified. The v0.5.0 implementation leaves the package version at 0.4.0 until
+are not modified. The v0.6.0 implementation leaves the package version at 0.5.0 until
 a separate release workflow. No release tag, push or publication is part of this work.
 
 ## Chronological out-of-sample validation
@@ -612,3 +612,200 @@ No parameter optimization, walk-forward, cross-validation, normalized-return sco
 or robustness score is included. Future walk-forward validation should preserve the
 same causal boundary and portfolio isolation rules. Existing full-fill, liquidity,
 slippage, spread, intrabar drawdown and exchange-constraint limitations remain.
+
+
+## Deterministic parameter sensitivity
+
+The `sensitivity/` package adds strict models, grid expansion, descriptive statistics,
+a Train-only coordinator, formatter and CLI. It imports no AI modules. Existing DSL
+models, RSI/SMA/EMA functions, backtester, metrics and market provider remain the core.
+There are no new indicators, operators, accounting formulas or optimizer.
+
+### Shared infrastructure and evaluation policy
+
+`MarketConfig` factors the v0.4.0 market assumptions out of `SharedConfig`; comparison
+and validation retain their original strategy-count limits and fields. Sensitivity
+adds `base_strategy` (a `RuleStrategy`), `parameters`, and `train_ratio` (0.50–0.90,
+default 0.70). Existing defaults are 1h, 30 days, cash 10000 and fee 0.001. All new
+configuration fields use strict, extra-forbidden, finite Pydantic validation.
+
+`comparison.engine.prepare_history` validates the existing complete historical window,
+resolves UTC boundaries, records unique dependencies and streams the same full-history
+SHA256 without computing indicators. Existing `prepare_shared_history` delegates to it
+and prepares the original full causal cache for comparison and validation. Their result
+schemas and execution behavior remain unchanged. `validation.engine.chronological_split`
+factors the existing v0.5.0 split policy into a shared function: decimal floor of N×ratio,
+no overlap or omissions, at least two completed candles in each segment, UTC half-open
+boundaries. Sensitivity reserves the Test segment but never evaluates variants there.
+
+`fetch_and_analyze` fully validates and expands the bounded grid before any provider
+call. It requests history once, using the maximum warm-up over all generated variants:
+RSI p+1, SMA p, EMA 5p. The same Binance pagination and complete-history validation
+apply. Each generated strategy runs with identical market settings and Train boundaries.
+Base indicator references left unchanged in a variant still count toward its warm-up.
+
+`run_sensitivity` truncates history at the split **before** calling `prepare_context`.
+Unique `(indicator name, period)` cache keys prevent period collisions. Indicator
+functions and backtests receive only prior history plus Train. Their first execution
+follows the first completed Train signal candle; final Train signals cannot execute
+on Test. Remaining positions liquidate at the final Train close. Every variant calls
+`run_backtest` independently with configured cash, no position and fresh equity/trades.
+Warm-up is excluded from benchmark and accounting. RSI, SMA and EMA remain causal;
+non-flat prefix-invariance tests guard the prepared cache across periods.
+
+Test timestamps determine its reserved interval and count. Test candle values are read
+only for shared history integrity/hashing, never for grid construction, indicators,
+portfolio evaluation, statistics, local observations or selection. Altering Test values
+changes the full-history digest but leaves Train metrics and all sensitivity statistics
+unchanged. There is no Test result, ranking, winner or recommended strategy in this report.
+
+### Structural parameter paths and explicit coupling
+
+Supported path grammar:
+
+```text
+(entry|exit)(.conditions.<zero-based index>)*.(left|right).(period|value)
+```
+
+A `period` field must target an RSI/SMA/EMA operand. A `value` field must target a
+constant compared with price or an indicator. Constant-to-constant rules cannot be
+varied. Names, operators, prices and boolean structure are immutable. Group indices
+must be canonical ASCII integers (no negative indices, leading zeros or wildcards).
+Ambiguous selectors are rejected; parameter identification never matches numeric values.
+
+Repeated indicator references are independent by default. To vary a shared SMA fast
+period in both entry and exit, declare:
+
+```json
+{
+  "path": "entry.left.period",
+  "coupled_paths": ["exit.left.period"],
+  "values": [10, 15, 20]
+}
+```
+
+Coupled indicator paths must have the same base indicator name and period. Coupled
+constants must have the same base value and compatible kinds; an RSI threshold cannot
+be coupled to a generic constant. Coupling is confined to explicitly named paths; no
+unrelated node changes. Paths must be unique across all primary and coupled references.
+A deep serialized copy of the base DSL is mutated per combination and fully revalidated;
+the original strategy stays unchanged. Existing depth 5 and 20-comparison limits apply.
+
+RSI candidate thresholds are finite numbers in inclusive 0–100, including reversed
+constant-versus-RSI comparisons. Period candidates must be integers (explicit float
+periods are rejected), RSI 2–500, SMA/EMA 2–1000. The conventional simple DSL form
+`entry RSI(p) < a; exit RSI(p) > b` also retains `a < b` ordering, including inclusive
+operators. Compound rules or different indicator periods keep their explicit DSL
+semantics; there is no inferred ordering constraint across unrelated constants or SMA
+fast/slow periods. Those configurations can be valid DSL while economically unusual.
+
+### Grid specifications and stable ordering
+
+Each `ParameterSpec` uses exactly one source:
+
+```json
+{"path": "entry.right.value", "values": [25, 30, 35]}
+{"path": "entry.left.period", "range": {"start": 10, "stop": 20, "step": 5}}
+{"path": "entry.right.value", "nearby": {"step": 5, "steps": 1}}
+```
+
+These are separate specifications, not one JSON file. `values` is nonempty and contains
+no numerical duplicates (30 and 30.0 are duplicates). `range` is inclusive, ascending,
+with a positive step; stop must be reached exactly. Expansion uses decimal arithmetic
+to avoid float accumulation. Indicator ranges require integral bounds and steps.
+Nearby generates `base + step × offset` for offsets `−steps..steps`, including base.
+`steps` defaults to 1, maximum 12. Omitted step defaults to 5 for RSI thresholds and 1
+for indicator periods. Other constants require an explicit step. No values are clipped
+at boundaries; e.g. nearby period 2 generates invalid period 1 and fails with a clear
+error. Rounded duplicate/nonfinite generated values are rejected.
+
+There are 1–3 dimensions and at most 25 Cartesian variants. Dimensions retain config
+order, explicit candidates retain declared order, ranges/nearby are ascending. The last
+dimension varies fastest. IDs are `variant-001`, `variant-002`, etc. in that order;
+coordinates and primary-path values are recorded. Coupled paths share their dimension's
+candidate value and do not multiply grid size. Invalid combinations reject the entire
+grid with parameter values and validation details; nothing is silently discarded. A
+three-dimension nearby grid with three values each exceeds 25 and must be narrowed.
+
+Examples: [RSI thresholds](examples/sensitivity.json),
+[SMA fast/slow periods](examples/sensitivity-sma.json),
+[EMA nearby periods](examples/sensitivity-ema.json). The base strategy is metadata;
+explicit candidate sets need not include its current values. Nearby always includes it.
+
+### Descriptive metrics, adjacency and observations
+
+Each `VariantResult` contains the existing `SegmentResult` and full `BacktestResult`,
+including fees, benchmark, trade records, total return, excess return in pp, drawdown,
+win rate and profit factor. Zero trades retain cash, null win rate and null profit
+factor. No losses means null profit factor, not infinity; losses without wins give zero.
+
+The summary reports min/median/max total return, max−min in pp, percentage of variants
+with return strictly >0, and percentage with excess return strictly >0. If benchmark
+is undefined, its outperformance percentage is null. Zero/low-trade variants remain
+in the descriptive statistics and are explicitly listed as insufficient for observations.
+These statistics describe the evaluated grid only; durations are identical across variants.
+
+Two variants are neighbors when exactly one coordinate differs by one index in the
+**declared candidate order**; all other coordinates match. Unsorted explicit values
+therefore define a different neighborhood than numerically sorted values. Report every
+edge once with signed `second return − first return`, its parameter path, and trade
+sufficiency. Do not rank variants. One dimension produces an ordered series; two produce
+a matrix with first parameter as rows and second as columns, plus IDs and trade counts
+for each cell. Three dimensions still produce edges and tables, with no flattened matrix.
+
+Local observations use documented descriptive conventions: at least five trades for a
+configuration and every neighbor; a 5 pp absolute similarity tolerance. These constants
+are included in the summary. A qualifying configuration within 5 pp of every neighbor
+is `similar_to_all_neighbors`; this describes its local neighborhood, not an entire
+stable region. A configuration exceeding every neighbor by >5 pp with at least two
+neighbors is an `isolated_positive_spike`. Others are `mixed_neighbors`, `no_neighbors`,
+`insufficient_neighbor_trades`, or `insufficient_trades`. Few or zero trades can never
+receive a similarity/spike label. Matrix cells with insufficient trades carry `*` in
+terminal output. These labels are transparent heuristics, not significance claims,
+robustness scores, recommendations or proof of future profitability.
+
+### CLI, structured parsing and JSON
+
+```bash
+poetry run strategy-backtest sensitivity \
+  'Analyze nearby RSI 30/70 thresholds on BTCUSDT over 180 days'
+poetry run strategy-backtest sensitivity --config examples/sensitivity.json
+poetry run strategy-backtest sensitivity --config examples/sensitivity-sma.json --json
+poetry run strategy-backtest sensitivity --config examples/sensitivity-ema.json
+```
+
+Config mode never imports the AI parser and needs no OpenAI key. AI mode makes one
+existing Responses structured-output request for nullable globals, validated base DSL
+and parameter specs or rejection. Python handles defaults, bounded expansion and all
+financial calculations. Explicit unsupported strategies, optimization, randomization,
+selection and Test-evaluation requests are rejected; structured rejection also handles
+ambiguous paths, conflicts and unsupported semantics. SDK objects are revalidated and
+an explicit symbol must be present in the request. Names/paths and parsed rules still
+require review because natural-language interpretation can be wrong.
+
+JSON emits one object, with stable ordered lists, finite values or null, containing
+`configuration`, `shared_data`, `split`, expanded `parameters`, full `variants`,
+`results`, `summary`, `neighbors`, `ordered_series`, `matrix`, `execution_assumptions`,
+and `methodology_warnings`. There is no progress on stdout. Errors use stderr and
+exit code 2; no credentials, prompts or raw SDK responses are exposed.
+
+### Research limitations and reproducibility
+
+Sensitivity explores a declared grid; it does not automatically optimize or select
+parameters. Repeated experimentation can overfit Train, and an isolated spike may be
+fragile or sampling noise. Local similarity is not statistical stability. Freeze a
+preselected configuration before a separate explicit `validate` workflow; sensitivity
+never evaluates variants on Test. `validate` currently requires a full configuration
+and recomputes its own shared warm-up, so a later run with a different strategy set or
+maximum period may have a different indicator seed. Preserve archived initialization
+history when exact replay matters. The application cannot prove data was never inspected.
+
+Fixed UTC ends, complete strategy/grid definitions, split intervals, counts and full
+warm-up/history SHA256 make runs auditable. Exact reproduction requires identical
+candles and configuration; hashes do not recover data. Adding a longer-period variant
+can move the shared RSI/EMA seed. EMA uses a finite first-close seed; RSI uses its
+existing Wilder seed. Provider revisions, full-fill assumptions, absent slippage/spreads,
+unlimited liquidity, floating financial arithmetic and open/close-only drawdown remain
+limitations. Stop loss, take profit, leverage, shorts, MACD, crossover operators,
+multi-symbol analysis, automatic optimization, walk-forward and profitability predictions
+remain unsupported. Package version stays 0.5.0; v0.6.0 release operations are separate.

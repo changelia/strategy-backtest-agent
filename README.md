@@ -7,8 +7,8 @@ strategies and tests them on Binance historical candles. OpenAI interprets your
 request; Python calculates indicators, signals, trades, fees, and performance metrics.
 Use the CLI to explore a strategy or export JSON for your own research tools.
 
-Development milestone: **v0.5.0 — Out-of-Sample Validation** (unreleased).
-Latest release tag and package version: **v0.4.0**.
+Development milestone: **v0.6.0 — Parameter Sensitivity Analysis** (unreleased).
+Latest release tag and package version: **v0.5.0**.
 
 ## Quick Start
 
@@ -144,6 +144,51 @@ Fixed boundaries make the window repeatable; exact replay requires unchanged can
 including warm-up. See [ARCHITECTURE.md](ARCHITECTURE.md#chronological-out-of-sample-validation)
 for boundary policy and initialization limitations.
 
+## Parameter Sensitivity
+
+Explore how fixed numerical choices change historical results on **Train only**:
+
+```bash
+poetry run strategy-backtest sensitivity \
+  'Analyze nearby RSI 30/70 thresholds on BTCUSDT over 180 days'
+poetry run strategy-backtest sensitivity --config examples/sensitivity.json
+poetry run strategy-backtest sensitivity --config examples/sensitivity.json --json
+```
+
+Config mode needs no OpenAI key. [RSI](examples/sensitivity.json),
+[SMA](examples/sensitivity-sma.json), and [EMA](examples/sensitivity-ema.json)
+examples use fixed UTC ends. The existing DSL is the base strategy. Specify exact
+paths, including `entry.conditions.0.left.period` for nested rules:
+
+```json
+{"path": "entry.right.value", "values": [25, 30, 35]}
+{"path": "entry.left.period", "coupled_paths": ["exit.left.period"],
+ "range": {"start": 10, "stop": 20, "step": 5}}
+{"path": "exit.right.value", "nearby": {}}
+```
+
+Each line above is a separate parameter specification. Choose exactly one source:
+explicit values, an inclusive stepped range, or nearby values. Nearby defaults are
+base±5 for RSI thresholds and base±1 for indicator periods; other constants require
+an explicit step. Periods must remain integers. Invalid combinations fail the entire
+grid; values are never clipped or discarded. Limits: three dimensions, 25 variants,
+and existing DSL complexity. Candidate order controls output and neighbor adjacency.
+Repeated indicators stay independent unless their exact paths are explicitly coupled.
+
+The default 70/30 chronological split reserves Test without evaluating it. All variants
+use the same Train boundaries, maximum warm-up, causal cache, fresh cash, fees and
+Train final-close liquidation. Test candles never reach indicators or backtests.
+Output includes per-variant metrics, min/median/max return, range, positive-return and
+buy-and-hold outperformance percentages, neighbor differences, and a 1D series or
+2D return matrix. JSON records the complete grid, definitions, split and history SHA256.
+
+These statistics describe the declared grid only. Similar neighboring returns or an
+isolated spike are descriptive observations; configurations with fewer than five trades
+are flagged, including zero trades. Repeated experimentation can overfit Train.
+**No variant is ranked, selected or recommended.** Sensitivity is not optimization,
+a robustness test or a profitability prediction. Freeze a preselected strategy before
+separately running `validate`; the software cannot prove its Test data was unseen.
+
 ## Supported Strategies
 
 - Wilder RSI, SMA, EMA, completed candle close (`price`), and finite numeric constants
@@ -153,7 +198,7 @@ for boundary policy and initialization limitations.
 - Next-candle-open execution, entry/exit fees, and final-close liquidation
 - Return, buy-and-hold comparison, trade PnL, win rate, drawdown, and profit factor
 - Paginated Binance historical data, terminal summaries, JSON, and an offline demo
-- Single-symbol strategy comparisons and chronological Train/Test validation
+- Single-symbol comparisons, chronological validation and bounded parameter sensitivity
 
 DSL periods: RSI 2–500; SMA/EMA 2–1000. Rules are limited to 20 comparisons and depth 5.
 RSI defaults to period 14 when omitted; specify SMA/EMA periods. Use an explicit
@@ -243,10 +288,9 @@ The application does not place orders or connect to private trading endpoints.
 
 ## Roadmap: Strategy Research Agent
 
-Strategy comparison and chronological holdout validation are implemented. Planned next
+Strategy comparison, chronological validation and parameter sensitivity are implemented. Planned next
 research capabilities:
 
-- **Parameter sensitivity:** explore how results change across periods and thresholds.
 - **Walk-forward validation:** evaluate strategies across multiple chronological windows.
 - **Research reports:** summarize configurations, evidence, risks, and limitations in reproducible reports.
 
