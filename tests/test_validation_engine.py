@@ -13,6 +13,7 @@ from test_validation_models import settings
 
 from strategy_backtest_agent import indicators, metrics
 from strategy_backtest_agent.backtester import run_backtest
+from strategy_backtest_agent.comparison.engine import prepare_shared_history
 from strategy_backtest_agent.models import BacktestConfig, BacktestResult, Candle
 from strategy_backtest_agent.rules.evaluator import Context, dependencies, prepare_context
 from strategy_backtest_agent.rules.models import RuleStrategy
@@ -346,3 +347,65 @@ def test_conflicting_or_naive_end_rejected() -> None:
     for end in (END + timedelta(hours=1), END.replace(tzinfo=None)):
         with pytest.raises(ValueError, match="conflicts|aware"):
             run_validation(history([10.0] * 27), settings(), evaluation_end=end)
+
+
+@pytest.mark.parametrize("name", ["rsi", "sma", "ema"])
+@pytest.mark.parametrize("period", [2, 3, 5])
+def test_nonflat_cached_indicators_match_every_train_and_test_prefix(
+    name: str, period: int
+) -> None:
+    # Compare every available signal value to independently prepared history ending
+    # at that signal candle, across both segments and the RSI seed transition.
+    # Non-flat prices exercise rolling windows and recursive gain/loss updates.
+    required = period * 5 if name == "ema" else period + (name == "rsi")
+    prices = ([10.0, 12.0, 11.0, 8.0, 15.0, 9.0, 14.0] * 8)[: required + 24]
+    candles = history(prices, warmup=required)
+    rules = strategy(comparison(indicator(name, period), ">", ZERO), comparison(PRICE, "<", ZERO))
+    config = settings(strategies=[named("prefix", rules)], train_ratio=0.5)
+    _, boundary, _, cache, _ = prepare_shared_history(candles, config)
+    assert boundary == required
+    cut = boundary + 12
+    for index in range(len(candles)):
+        prefix = prepare_context(candles[: index + 1], dependencies(rules))
+        assert cache.indicators[(name, period)][: index + 1] == pytest.approx(
+            prefix.indicators[(name, period)], nan_ok=True
+        )
+        if index >= cut:
+            # Alter all subsequent Test prices; the current and earlier signal
+            # values must remain unchanged even though preparation sees the suffix.
+            changed = candles[: index + 1] + [
+                candle.model_copy(update={"open": 1000, "high": 1000, "low": 1000, "close": 1000})
+                for candle in candles[index + 1 :]
+            ]
+            changed_cache = prepare_context(changed, dependencies(rules))
+            assert changed_cache.indicators[(name, period)][: index + 1] == pytest.approx(
+                cache.indicators[(name, period)][: index + 1], nan_ok=True
+            )
+
+
+def test_final_train_exit_signal_liquidates_at_train_close_not_test_open() -> None:
+    rules = strategy(
+        comparison(PRICE, "<", {"type": "value", "value": 15}),
+        comparison(PRICE, ">", {"type": "value", "value": 15}),
+    )
+    candles = history([10.0] * 11 + [20] + [100.0] * 12, warmup=0)
+    row = run_validation(
+        candles,
+        settings(
+            strategies=[named("exit-boundary", rules)],
+            train_ratio=0.5,
+            fee=0.01,
+            initial_balance=1000,
+        ),
+    ).results[0]
+    # The last Train close generates an exit that would use the next open=100
+    # in an unsplit run. The split must instead force-close at Train close=20.
+    assert row.train.result.total_trades == 1
+    trade = row.train.result.trades[0]
+    assert trade.entry_time == candles[1].timestamp
+    assert trade.exit_time == candles[11].timestamp
+    assert trade.exit_price == 20
+    assert row.train.result.final_balance == pytest.approx(1000 / 10.1 * 20 * 0.99)
+    assert row.test.result.trades == []
+    assert row.test.result.initial_balance == row.test.result.final_balance == 1000
+    assert row.test.result.max_drawdown_percent == 0
