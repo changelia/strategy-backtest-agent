@@ -22,6 +22,7 @@ def test_defaults_and_existing_config_conversion() -> None:
         "period_days": 30,
         "initial_balance": 10000,
         "fee": 0.001,
+        "execution": None,
         "strategy": {"type": "rsi", "period": 14, "entry_below": 30, "exit_above": 70},
     }
     config = parsed.to_backtest_config()

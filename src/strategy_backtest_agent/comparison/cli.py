@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from strategy_backtest_agent.comparison.engine import fetch_and_compare
 from strategy_backtest_agent.comparison.formatter import format_comparison
 from strategy_backtest_agent.comparison.models import RANKING_CRITERIA, ComparisonConfig
+from strategy_backtest_agent.execution_cli import add_cost_arguments, override_execution
 from strategy_backtest_agent.market_data import BinanceMarketData, MarketDataError
 
 
@@ -26,6 +27,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--sort", choices=RANKING_CRITERIA, help="Override the configuration ranking"
     )
+    add_cost_arguments(parser)
     args = parser.parse_args(argv)
     try:
         if args.config is not None:
@@ -36,6 +38,7 @@ def main(argv: list[str] | None = None) -> None:
             config = parse_comparison(args.text)
         if args.sort is not None:
             config = ComparisonConfig.model_validate({**config.model_dump(), "sort_by": args.sort})
+        config = override_execution(config, args)
         result = asyncio.run(fetch_and_compare(BinanceMarketData(), config, data_source="binance"))
         if args.json:
             print(result.model_dump_json())

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from strategy_backtest_agent.execution_cli import add_cost_arguments, override_execution
 from strategy_backtest_agent.market_data import BinanceMarketData, MarketDataError
 from strategy_backtest_agent.validation.engine import fetch_and_validate
 from strategy_backtest_agent.validation.formatter import format_validation
@@ -23,6 +24,7 @@ def main(argv: list[str] | None = None) -> None:
         "--config", type=Path, help="Validated JSON configuration; no OpenAI key needed"
     )
     parser.add_argument("--json", action="store_true", help="Emit validation results as JSON only")
+    add_cost_arguments(parser)
     args = parser.parse_args(argv)
     try:
         if args.config is not None:
@@ -31,6 +33,7 @@ def main(argv: list[str] | None = None) -> None:
             from strategy_backtest_agent.ai.parser import parse_validation
 
             config = parse_validation(args.text)
+        config = override_execution(config, args)
         result = asyncio.run(fetch_and_validate(BinanceMarketData(), config, data_source="binance"))
         if args.json:
             print(result.model_dump_json())

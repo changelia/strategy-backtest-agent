@@ -9,9 +9,11 @@ from strategy_backtest_agent.market_data import TIMEFRAMES
 from strategy_backtest_agent.models import (
     BacktestConfig,
     BacktestResult,
+    ExecutionConfig,
     Model,
     RSIStrategy,
     StrictModel,
+    normalize_execution,
 )
 from strategy_backtest_agent.rules.models import Indicator, RuleStrategy
 from strategy_backtest_agent.strategy import legacy_rules
@@ -58,7 +60,16 @@ class MarketConfig(StrictModel):
     period_days: int = Field(default=30, gt=0, le=365)
     initial_balance: float = Field(default=10000, gt=0)
     fee: float = Field(default=0.001, ge=0, le=0.05)
+    execution: ExecutionConfig | None = None
     evaluation_end: AwareDatetime | None = None
+
+    @model_validator(mode="after")
+    def execution_settings(self) -> "MarketConfig":
+        normalize_execution(self, self.execution, "fee", self.fee)
+        return self
+
+    def execution_config(self) -> ExecutionConfig:
+        return self.execution or ExecutionConfig(fee_rate=self.fee)
 
     @field_validator("timeframe")
     @classmethod
@@ -79,6 +90,7 @@ class MarketConfig(StrictModel):
                 "timeframe": self.timeframe,
                 "initial_balance": self.initial_balance,
                 "trading_fee": self.fee,
+                "execution": self.execution,
             }
         )
 

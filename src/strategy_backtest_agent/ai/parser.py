@@ -3,6 +3,7 @@
 import os
 import re
 from collections.abc import Callable
+from decimal import Decimal
 from typing import TypeVar
 
 from openai import (
@@ -161,6 +162,31 @@ def parse_sensitivity(text: str) -> SensitivityConfig:
     )
 
 
+def _verify_execution_assumptions(text: str, configuration: ConfigT) -> None:
+    """Never invent or silently omit named spread/slippage values supplied in text."""
+    number = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
+    execution = configuration.execution_config()
+    for label, value in (("spread", execution.spread_bps), ("slippage", execution.slippage_bps)):
+        values: set[Decimal] = set()
+        patterns = (
+            rf"\b{label}\b\s*(?:of\s*)?(?:[:=]\s*)?({number})\s*(bps|basis\s+points|%)",
+            rf"({number})\s*(bps|basis\s+points|%)\s*(?:full\s+)?{label}\b",
+        )
+        for pattern in patterns:
+            for amount, unit in re.findall(pattern, text, re.IGNORECASE):
+                values.add(Decimal(amount) * (100 if unit == "%" else 1))
+        for amount in re.findall(rf"\b{label}_bps\s*[:=]\s*({number})", text, re.IGNORECASE):
+            values.add(Decimal(amount))
+        if len(values) > 1:
+            raise StrategyParseError(f"Ambiguous execution: conflicting {label} values")
+        if values and Decimal(str(value)) not in values:
+            raise StrategyParseError(f"Parsed {label} must match the explicit execution assumption")
+        if not values and value != 0:
+            raise StrategyParseError(
+                f"Explicit {label} in bps or percent is required; never estimate costs"
+            )
+
+
 def _parse_request(
     text: str,
     schema: type[OutputT],
@@ -200,6 +226,7 @@ def _parse_request(
         # Revalidate even an SDK model instance; constructed objects must not bypass validation.
         output = schema.model_validate(response.output_parsed.model_dump(warnings=False))
         configuration = convert(output)
+        _verify_execution_assumptions(text, configuration)
         if not re.search(
             rf"(?<![A-Za-z0-9]){re.escape(configuration.symbol)}(?![A-Za-z0-9])",
             text,

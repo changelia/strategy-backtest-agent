@@ -1,6 +1,7 @@
 """In-sample grid tables and return matrix; never rank or recommend variants."""
 
 from strategy_backtest_agent.comparison.formatter import _percent
+from strategy_backtest_agent.execution import EXECUTION_WARNINGS, format_costs, format_execution
 from strategy_backtest_agent.rules.formatter import format_rule
 from strategy_backtest_agent.sensitivity.models import MIN_OBSERVATION_TRADES, SensitivityReport
 
@@ -22,6 +23,7 @@ def format_sensitivity(report: SensitivityReport) -> str:
         f"Timeframe: {config.timeframe}",
         f"Historical period: {config.period_days} days",
         f"Train ratio: {config.train_ratio * 100:g}%",
+        format_execution(config.execution_config()),
         f"Evaluated Train (UTC): [{split.train_start.isoformat()}, {split.train_end.isoformat()})",
         f"Reserved Test (not evaluated): [{split.test_start.isoformat()}, "
         f"{split.test_end.isoformat()})",
@@ -74,6 +76,9 @@ def format_sensitivity(report: SensitivityReport) -> str:
             ]
         )
     lines.extend(["", "Results (declared parameter order):", *_table(rows)])
+    lines.extend(
+        f"  {row.variant_id}: {format_costs(row.train.result.costs)}" for row in report.results
+    )
     summary = report.summary
     lines.extend(
         [
@@ -123,5 +128,5 @@ def format_sensitivity(report: SensitivityReport) -> str:
                 ),
             ]
         )
-    lines.extend(["", *report.methodology_warnings])
+    lines.extend(["", *report.methodology_warnings, *EXECUTION_WARNINGS])
     return "\n".join(lines)

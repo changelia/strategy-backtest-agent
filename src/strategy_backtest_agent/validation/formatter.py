@@ -1,6 +1,7 @@
 """Readable validation results, with no ranking or performance claims."""
 
 from strategy_backtest_agent.comparison.formatter import _percent
+from strategy_backtest_agent.execution import EXECUTION_WARNINGS, format_costs, format_execution
 from strategy_backtest_agent.rules.formatter import format_rule
 from strategy_backtest_agent.validation.models import ValidationReport
 
@@ -14,6 +15,7 @@ def format_validation(report: ValidationReport) -> str:
         f"Period: {config.period_days} days",
         f"Split: {100 * config.train_ratio:g}% Train / {100 * (1 - config.train_ratio):g}% Test",
         f"Fee per side: {config.fee * 100:g}%",
+        format_execution(config.execution_config()),
         f"Data: {data.source}; SHA256: {data.candles_sha256}",
         f"Warm-up: {data.warmup_candles} prior candles; {data.warmup_policy}",
     ]
@@ -46,6 +48,7 @@ def format_validation(report: ValidationReport) -> str:
                     ),
                     f"  Max Drawdown: {_percent(result.max_drawdown_percent)}",
                     f"  Trades: {result.total_trades}",
+                    f"  {format_costs(result.costs)}",
                     f"  Win Rate: {_percent(result.win_rate)}",
                     "  Profit Factor: "
                     + (
@@ -56,5 +59,5 @@ def format_validation(report: ValidationReport) -> str:
                 ]
             )
         lines.append(f"Return gap (Test − Train): {row.return_gap_pp:+.2f} pp")
-    lines.extend(["", *report.methodology_warnings])
+    lines.extend(["", *report.methodology_warnings, *EXECUTION_WARNINGS])
     return "\n".join(lines)

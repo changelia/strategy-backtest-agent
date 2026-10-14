@@ -1,6 +1,7 @@
 """Pure Python rendering of calculated comparison results."""
 
 from strategy_backtest_agent.comparison.models import ComparisonResult
+from strategy_backtest_agent.execution import EXECUTION_WARNINGS, format_costs, format_execution
 from strategy_backtest_agent.rules.formatter import format_rule
 
 
@@ -18,6 +19,7 @@ def format_comparison(comparison: ComparisonResult) -> str:
         f"Period: {config.period_days} days",
         f"Initial Balance: {config.initial_balance:,.2f} (quote currency)",
         f"Fee per side: {config.fee * 100:g}%",
+        format_execution(config.execution_config()),
         f"Data: {data.source}",
         f"Evaluation (UTC): {data.evaluation_start.isoformat()} → "
         f"{data.evaluation_end.isoformat()}",
@@ -62,6 +64,8 @@ def format_comparison(comparison: ComparisonResult) -> str:
                 f"{row.name} [{row.id}]",
                 f"  ENTRY: {format_rule(row.strategy.entry)}",
                 f"  EXIT: {format_rule(row.strategy.exit)}",
+                f"  {format_costs(row.result.costs)}",
             ]
         )
+    lines.extend(["", *EXECUTION_WARNINGS])
     return "\n".join(lines)

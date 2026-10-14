@@ -30,7 +30,7 @@ WARNINGS = (
     "least 5 trades per configuration. These are descriptive conventions, not significance tests.",
     "RSI/EMA initialization is finite. Each indicator uses its own anchored prior history; "
     "adding grid periods cannot move an existing indicator seed. "
-    "Fills exclude slippage, spreads and liquidity constraints; "
+    "Fills use configured modeled spread/slippage and exclude liquidity constraints; "
     "drawdown samples opens and closes, not intrabar extremes.",
 )
 
@@ -177,7 +177,7 @@ class SensitivityReport(StrictModel):
     matrix: ReturnMatrix | None
     execution_assumptions: str = (
         "fresh full-cash long-only portfolio per variant; completed Train close signals at "
-        "next Train open; entry/exit fees; forced liquidation at final Train close; "
+        "next Train open; configured execution costs; forced liquidation at final Train close; "
         "no trades, benchmark, equity or indicator preparation on Test"
     )
     methodology_warnings: list[str]

@@ -6,7 +6,11 @@ from pydantic import AwareDatetime, Field, field_validator, model_validator
 
 from strategy_backtest_agent.comparison.models import ComparisonConfig, RankingCriterion
 from strategy_backtest_agent.market_data import TIMEFRAMES
-from strategy_backtest_agent.models import BacktestConfig
+from strategy_backtest_agent.models import (
+    BacktestConfig,
+    ExecutionConfig,
+    normalize_execution,
+)
 from strategy_backtest_agent.models import RSIStrategy as RSIStrategy
 from strategy_backtest_agent.models import StrictModel as StrictModel
 from strategy_backtest_agent.rules.models import RuleStrategy
@@ -20,7 +24,16 @@ class AIStrategyConfig(StrictModel):
     period_days: int = Field(default=30, gt=0, le=365)
     initial_balance: float = Field(default=10000, gt=0)
     fee: float = Field(default=0.001, ge=0, le=0.05)
+    execution: ExecutionConfig | None = None
     strategy: RSIStrategy | RuleStrategy = Field(default_factory=RSIStrategy)
+
+    @model_validator(mode="after")
+    def execution_settings(self) -> "AIStrategyConfig":
+        normalize_execution(self, self.execution, "fee", self.fee)
+        return self
+
+    def execution_config(self) -> ExecutionConfig:
+        return self.execution or ExecutionConfig(fee_rate=self.fee)
 
     @field_validator("timeframe")
     @classmethod
@@ -38,6 +51,7 @@ class AIStrategyConfig(StrictModel):
                 "timeframe": self.timeframe,
                 "initial_balance": self.initial_balance,
                 "trading_fee": self.fee,
+                "execution": self.execution,
                 "rsi_period": legacy.period,
                 "entry_rsi": legacy.entry_below,
                 "exit_rsi": legacy.exit_above,
@@ -52,12 +66,19 @@ class RSIExtraction(StrictModel):
     exit_above: float | None
 
 
+class ExecutionExtraction(StrictModel):
+    fee_rate: float | None
+    spread_bps: float | None
+    slippage_bps: float | None
+
+
 class StrategyExtraction(StrictModel):
     symbol: str | None
     timeframe: str | None
     period_days: int | None
     initial_balance: float | None
     fee: float | None
+    execution: ExecutionExtraction | None = None
     strategy: RSIExtraction | RuleStrategy | None
 
     def validated_config(self) -> AIStrategyConfig:
@@ -106,6 +127,7 @@ class ComparisonExtraction(StrictModel):
     period_days: int | None
     initial_balance: float | None
     fee: float | None
+    execution: ExecutionExtraction | None = None
     strategies: list[ComparisonStrategyExtraction] = Field(min_length=2, max_length=5)
     evaluation_end: AwareDatetime | None
     sort_by: RankingCriterion | None
@@ -146,6 +168,7 @@ class ValidationExtraction(StrictModel):
     period_days: int | None
     initial_balance: float | None
     fee: float | None
+    execution: ExecutionExtraction | None = None
     strategies: list[ComparisonStrategyExtraction] = Field(min_length=1, max_length=5)
     evaluation_end: AwareDatetime | None
     train_ratio: float | None
@@ -181,6 +204,7 @@ class SensitivityExtraction(StrictModel):
     period_days: int | None
     initial_balance: float | None
     fee: float | None
+    execution: ExecutionExtraction | None = None
     evaluation_end: AwareDatetime | None
     train_ratio: float | None
     base_strategy: RuleStrategy
