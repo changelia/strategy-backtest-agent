@@ -7,8 +7,8 @@ strategies and tests them on Binance historical candles. OpenAI interprets your
 request; Python calculates indicators, signals, trades, fees, and performance metrics.
 Use the CLI to explore a strategy or export JSON for your own research tools.
 
-Development milestone: **v0.6.0 — Parameter Sensitivity Analysis** (unreleased).
-Latest release tag and package version: **v0.5.0**.
+Current release: **v0.6.0 — Parameter Sensitivity Analysis**.
+Release tag and package version: **v0.6.0**.
 
 ## Quick Start
 

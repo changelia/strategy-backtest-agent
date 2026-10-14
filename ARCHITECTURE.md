@@ -475,10 +475,9 @@ single runs and cannot establish which strategy will be profitable in the future
 
 ### Release metadata
 
-The latest tag is v0.5.0 and `pyproject.toml` declares 0.5.0. There is no current
-package/tag mismatch. Earlier tags may retain historical metadata mismatches; they
-are not modified. The v0.6.0 implementation leaves the package version at 0.5.0 until
-a separate release workflow. No release tag, push or publication is part of this work.
+The v0.6.0 release tag and `pyproject.toml` package version are aligned at 0.6.0.
+Earlier tags may retain historical metadata mismatches; they are not modified.
+The release follows the financial audit, quality gates and a fast-forward main merge.
 
 ## Chronological out-of-sample validation
 
@@ -824,7 +823,7 @@ Provider revisions, full-fill assumptions, absent slippage/spreads,
 unlimited liquidity, floating financial arithmetic and open/close-only drawdown remain
 limitations. Stop loss, take profit, leverage, shorts, MACD, crossover operators,
 multi-symbol analysis, automatic optimization, walk-forward and profitability predictions
-remain unsupported. Package version stays 0.5.0; v0.6.0 release operations are separate.
+remain unsupported. Parameter sensitivity is included in release v0.6.0.
 
 
 ### Final financial audit: grid stability

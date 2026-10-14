@@ -1,6 +1,6 @@
 [project]
 name = "strategy-backtest-agent"
-version = "0.5.0"
+version = "0.6.0"
 description = "Deterministic cryptocurrency strategy backtesting"
 authors = []
 license = {text = "MIT"}
