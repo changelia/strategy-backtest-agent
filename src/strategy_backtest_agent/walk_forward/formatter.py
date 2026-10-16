@@ -6,6 +6,10 @@ from strategy_backtest_agent.rules.formatter import format_rule
 from strategy_backtest_agent.walk_forward.models import WalkForwardReport
 
 
+def _points(value: float | None) -> str:
+    return "N/A" if value is None else f"{value:+.2f} pp"
+
+
 def format_walk_forward(report: WalkForwardReport) -> str:
     config, data = report.configuration, report.shared_data
     train, test, step = config.windows.counts(config.timeframe)
@@ -39,7 +43,7 @@ def format_walk_forward(report: WalkForwardReport) -> str:
                     f"  Balance: {result.initial_balance:.2f} → {result.final_balance:.2f}",
                     f"  Return: {result.total_return_percent:+.4f}%; "
                     f"net Buy & Hold: {_percent(result.buy_and_hold_return_percent)}; "
-                    f"excess: {segment.excess_return_pp} pp",
+                    f"excess: {_points(segment.excess_return_pp)}",
                     f"  Trades: {result.total_trades}; "
                     f"drawdown: {result.max_drawdown_percent:.4f}%; "
                     f"win rate: {_percent(result.win_rate)}; "
@@ -61,7 +65,7 @@ def format_walk_forward(report: WalkForwardReport) -> str:
                 f"range: {_percent(summary.minimum_test_return_percent)} to "
                 f"{_percent(summary.maximum_test_return_percent)}",
                 f"  Median fold drawdown: {_percent(summary.median_test_max_drawdown_percent)}; "
-                f"median excess: {summary.median_test_excess_return_pp} pp",
+                f"median excess: {_points(summary.median_test_excess_return_pp)}",
             ]
         )
         if summary.stitched_oos_index is not None:
