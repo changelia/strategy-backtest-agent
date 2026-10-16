@@ -961,3 +961,81 @@ measured exchange costs. Constant costs omit time variation, market impact,
 order-book dynamics, partial fills, liquidity limits, funding, taxes and exchange
 quantity constraints. Finite RSI/EMA initialization and historical differences
 between command warm-up policies remain documented limitations.
+
+
+## Fixed-strategy walk-forward analysis
+
+`walk_forward` reuses the validated DSL, shared history validation, v0.6.0
+indicator-local cache and v0.7.0 `run_backtest` accounting. It introduces no second
+financial engine. Package version remains 0.7.0 pending release authorization.
+
+`WalkForwardConfig` extends shared market settings with `windows` (`mode`,
+`train_days`, `test_days`, optional `step_days`, `max_folds`) and `stitch_oos`.
+All models forbid extra fields and nonfinite numbers. Durations are positive whole
+days and must divide exactly into timeframe candle counts. Each segment needs at
+least two completed candles. Strategy IDs are unique; 1–5 strategies share costs.
+AI uses the existing Responses structured parser to extract fixed rules and protocol
+only; deterministic Python validates everything and generates folds. Config-only
+execution does not import or invoke the AI parser.
+
+Given evaluation boundary B, Train size T, Test size U and step S, fold k uses
+Train `[B+kS, B+kS+T)` in rolling mode, or `[B, B+kS+T)` in expanding mode;
+Test is always `[B+kS+T, B+kS+T+U)`. Indices count candles, never calendar offsets.
+The first eligible completed evaluation candle anchors B. UTC boundaries are
+half-open candle intervals; the final end is last candle open plus timeframe.
+Only complete folds are used, and at least two are required. S >= U prevents Test
+overlap. Train may overlap previous Tests; fixed strategies cannot adapt to those
+results. S > U produces explicitly visible Test gaps. Default maximum is 50 folds,
+hard maximum 100; exceeding the configured limit is an error, never silent truncation.
+Unused trailing count is total evaluation candles minus the final Test end index.
+Evaluation range coverage, missing candles and unfinished candles follow existing
+shared-history validation. A fixed evaluation_end and identical candles reproduce
+results; the SHA256 includes all warm-up and evaluation candles.
+
+One provider fetch includes the largest dependency warm-up. For each distinct
+indicator, `prepare_train_context` anchors its own history start at B minus its
+required warm-up (RSI p+1, SMA p, EMA 5p). Values then continue causally through
+all folds; neither rolling segments nor Tests reseed indicators. Dependencies are
+computed once, even when repeated in several strategies. The report records each
+indicator, required prior count and exact history start. This adopts v0.6.0's
+strategy/grid-independent initialization instead of v0.5.0 validation's common
+full-history seed: adding a longer-period strategy cannot move shorter-period
+RSI/EMA seeds. Differences from standalone validation are possible and deliberate.
+Adding later folds with the same evaluation start cannot move existing seeds.
+Changing the evaluation start changes the declared initialization protocol.
+
+Every backtest receives only the prefix ending at its segment end, a correspondingly
+truncated cache, and its evaluation_start. Each call resets cash, quantity, trades,
+equity and realized PnL. Prior history initializes indicators only; the first signal
+is the first completed segment candle and executes at the next segment open.
+The last signal cannot cross the boundary; positions liquidate at final segment
+close. Train positions, capital and signals never carry to Test or another fold.
+Fee per side, full spread (half on each side) and adverse slippage per side are
+identical everywhere, including net first-open/final-close Buy & Hold. Existing
+`SegmentResult` and `BacktestResult` preserve PnL, trade metrics and cost breakdowns.
+
+Aggregates are Test-only, per strategy in configuration order. Completed trades are
+summed. Positive count/fraction uses strictly positive net return, fraction in [0,1].
+Return median/min/max use unweighted independent fold returns; drawdown median is
+the median of individual fold drawdowns, not a continuous-portfolio statistic.
+Excess median uses strategy return minus net benchmark in percentage points;
+outperforming count uses strictly positive excess. Undefined benchmark excess is
+null and excluded from its median/count. Zero-trade returns remain in aggregates;
+undefined win rate/profit factor remain null. Neither is averaged or pooled.
+
+Optional stitched OOS output is deliberately a fold-endpoint index, not an intrafold
+curve. It starts at 100 at the first Test open, and each Test end multiplies its
+previous value by that fold's final_balance / initial_balance. This normalizes
+fresh-capital accounts and includes all fees, spread/slippage and final liquidation.
+Absolute balances are never concatenated. Requests with Test gaps are rejected;
+no implicit gap return or position continuity is assumed. No stitched drawdown is
+reported, since endpoint sampling omits intrafold fluctuations.
+
+Multiple historical folds help describe temporal variation; they do not constitute
+parameter optimization, statistical independence, robustness certification or a
+future prediction. Strategies must be frozen before inspecting Test. Repeated
+experimentation can contaminate all historical OOS periods. Finite RSI/EMA seeds,
+constant illustrative costs, unlimited liquidity and open/close drawdown sampling
+retain the limitations of the existing engines. JSON includes precise folds,
+shared metadata, configuration/execution assumptions, ordering policies, full
+segment results, optional index, aggregate definitions and methodology warnings.

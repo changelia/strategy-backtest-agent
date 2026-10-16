@@ -135,7 +135,7 @@ repeated inspection or choosing strategies using Test contaminates the holdout.
 The return gap is `Test return − Train return`, in percentage points. It is descriptive:
 durations differ and total returns are not normalized. No winner or robustness score
 is assigned. A single holdout cannot establish robustness or future profitability.
-Parameter optimization is unsupported; walk-forward validation is future work.
+Parameter optimization is unsupported; use `walk-forward` for multiple fixed-strategy windows.
 
 JSON contains `configuration`, `shared_data`, `split`, per-strategy `results` with
 independent Train/Test metrics and trades, `return_gap_pp`, and `methodology_warnings`.
@@ -143,6 +143,38 @@ Undefined metrics are `null`; JSON stdout contains no progress messages.
 Fixed boundaries make the window repeatable; exact replay requires unchanged candles,
 including warm-up. See [ARCHITECTURE.md](ARCHITECTURE.md#chronological-out-of-sample-validation)
 for boundary policy and initialization limitations.
+
+## Walk-Forward Analysis
+
+Evaluate 1–5 **fixed, predeclared** strategies on multiple chronological Train/Test
+windows, with fresh capital in every segment:
+
+```bash
+poetry run strategy-backtest walk-forward --config examples/walk-forward.json
+poetry run strategy-backtest walk-forward --config examples/walk-forward.json --json
+poetry run strategy-backtest walk-forward \
+  'Run rolling walk-forward analysis of RSI 30/70 and SMA 20/50 on BTCUSDT on 1h over 360 days with 120-day Train and 30-day Test windows'
+```
+
+Config mode needs no OpenAI key. Rolling Train windows have fixed lengths; expanding
+Train windows retain the first evaluation candle and grow each fold. Durations are
+whole days converted to exact candle counts. Step defaults to Test length; smaller
+steps are rejected to prevent overlapping Test windows. At least two complete folds
+are required, with a configurable limit (default 50, hard maximum 100). Excess folds
+are rejected; incomplete final windows are excluded and trailing candles reported.
+
+Reports include per-fold results, costs and net Buy & Hold, plus Test-only medians,
+ranges, trade counts and positive/outperforming fold counts. Optional `stitch_oos`
+compounds normalized independent Test returns into a **fold-endpoint index** starting
+at 100. It requires contiguous Test windows and represents no position continuity or
+continuous portfolio drawdown. All segments use the same declared execution costs.
+
+Multiple OOS periods reveal variation across historical windows, but do not guarantee
+robustness or future profitability. Train is diagnostic: no parameter optimization,
+adaptive selection or winner ranking occurs. Choosing strategies after inspecting
+this history undermines independent held-out evidence. See
+[ARCHITECTURE.md](ARCHITECTURE.md#fixed-strategy-walk-forward-analysis) for initialization,
+boundaries and aggregate definitions.
 
 ## Parameter Sensitivity
 
@@ -324,10 +356,9 @@ The application does not place orders or connect to private trading endpoints.
 
 ## Roadmap: Strategy Research Agent
 
-Strategy comparison, chronological validation and parameter sensitivity are implemented. Planned next
-research capabilities:
+Strategy comparison, chronological validation, parameter sensitivity and fixed-strategy
+walk-forward analysis are implemented. Planned next research capabilities:
 
-- **Walk-forward validation:** evaluate strategies across multiple chronological windows.
 - **Research reports:** summarize configurations, evidence, risks, and limitations in reproducible reports.
 
 ## Development
