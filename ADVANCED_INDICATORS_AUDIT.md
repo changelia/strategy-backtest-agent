@@ -113,5 +113,6 @@ Constant illustrative execution costs, full fills, unlimited liquidity and sampl
 open/close drawdown remain modeling assumptions. Historical filter results do not
 establish robustness or future profitability.
 
-Audit performed on feat/advanced-indicators. Package version remains 0.8.0;
-no push, merge, version bump or tag was performed.
+Audit performed on feat/advanced-indicators while the package version was 0.8.0.
+The audit itself performed no push, merge, version bump or tag; release operations
+are a separate authorized step.

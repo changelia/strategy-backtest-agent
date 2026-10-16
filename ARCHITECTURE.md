@@ -1051,8 +1051,8 @@ infer an indicator family from an incomplete operand.
 
 The v0.9 implementation extends the existing `type: indicator` operand union,
 comparison operators, nested groups, complexity limits and backtester. No new
-financial engine, provider or execution semantics are introduced. Package version
-remains 0.8.0 pending release authorization. All examples in `examples/advanced-*`
+financial engine, provider or execution semantics are introduced. Released in
+v0.9.0 — Advanced Technical Indicators. All examples in `examples/advanced-*`
 use the validated schema and a fixed UTC end.
 
 ### Definitions and available observations
