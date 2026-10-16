@@ -23,16 +23,19 @@ from strategy_backtest_agent.ai.models import (
     ParserOutput,
     SensitivityParserOutput,
     ValidationParserOutput,
+    WalkForwardParserOutput,
 )
 from strategy_backtest_agent.ai.prompts import (
     COMPARISON_PROMPT,
     SENSITIVITY_PROMPT,
     SYSTEM_PROMPT,
     VALIDATION_PROMPT,
+    WALK_FORWARD_PROMPT,
 )
 from strategy_backtest_agent.comparison.models import ComparisonConfig
 from strategy_backtest_agent.sensitivity.models import SensitivityConfig
 from strategy_backtest_agent.validation.models import ValidationConfig
+from strategy_backtest_agent.walk_forward.models import WalkForwardConfig
 
 DEFAULT_MODEL = "gpt-6-luna"
 
@@ -70,7 +73,12 @@ def create_client() -> OpenAI:
 
 OutputT = TypeVar("OutputT", bound=BaseModel)
 ConfigT = TypeVar(
-    "ConfigT", AIStrategyConfig, ComparisonConfig, ValidationConfig, SensitivityConfig
+    "ConfigT",
+    AIStrategyConfig,
+    ComparisonConfig,
+    ValidationConfig,
+    SensitivityConfig,
+    WalkForwardConfig,
 )
 
 
@@ -256,3 +264,28 @@ def _parse_request(
         if isinstance(exc, StrategyParseError):
             raise
         raise StrategyParseError("AI structured output could not be validated") from None
+
+
+def _walk_forward_configuration(output: WalkForwardParserOutput) -> WalkForwardConfig:
+    if output.rejection is not None:
+        raise StrategyParseError(f"Request rejected: {output.rejection.replace('_', ' ')}")
+    assert output.configuration is not None
+    return output.configuration.validated_config()
+
+
+def parse_walk_forward(text: str) -> WalkForwardConfig:
+    """Extract fixed rules and protocol only; all financial calculations stay in Python."""
+    if re.search(
+        r"\b(?:random|shuffl\w*|optimi[sz]\w*|tun(?:e|ing)|adaptive|select|choose|pick|winner|best)\b"
+        r"|\brobustness\s+score\b",
+        text,
+        re.IGNORECASE,
+    ):
+        raise StrategyParseError("Unsupported walk-forward: optimization or strategy selection")
+    return _parse_request(
+        text,
+        WalkForwardParserOutput,
+        WALK_FORWARD_PROMPT,
+        _walk_forward_configuration,
+        max_output_tokens=16384,
+    )

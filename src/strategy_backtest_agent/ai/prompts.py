@@ -118,3 +118,23 @@ All variants run on Train only; Test is reserved, not evaluated. No separate hel
 workflow exists here. No prices, trades, metrics, generated code or profitability claims.
 """
 )
+
+
+WALK_FORWARD_PROMPT = (
+    COMPARISON_PROMPT.replace("compare 2–5", "evaluate 1–5 fixed")
+    .replace("fewer than 2", "fewer than 1")
+    .replace("sort_by total_return.", "rolling windows; step equals Test duration.")
+    + """
+Extract walk-forward windows: mode rolling or expanding, train_days, test_days,
+step_days and max_folds. Require explicit Train and Test durations; reject ambiguity.
+Convert hours to days only when exact whole days; otherwise reject unsupported duration.
+Null for omitted mode, step, max_folds and stitch_oos. Never invent window durations.
+Historical period_days is the complete evaluation period, including initial Train.
+Python generates all complete chronological folds, at least two; Test windows cannot overlap.
+Same fixed strategy in every fold; Train diagnostic only. Reject optimization, tuning,
+adaptive strategies, random splits, winner selection and robustness scores.
+Never select a strategy or produce trades, prices, financial metrics or predictions.
+Do not extract sort_by, train_ratio or parameters. OOS does not prove independent evidence
+if strategies were chosen after inspecting the same history.
+"""
+)

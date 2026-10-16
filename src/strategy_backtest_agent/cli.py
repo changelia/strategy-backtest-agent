@@ -122,6 +122,11 @@ async def _run(
 
 def main() -> None:
     """Validate CLI input and run a single historical backtest."""
+    if sys.argv[1:2] == ["walk-forward"]:
+        from strategy_backtest_agent.walk_forward.cli import main as walk_forward_main
+
+        walk_forward_main(sys.argv[2:])
+        return
     if sys.argv[1:2] == ["costs"]:
         from strategy_backtest_agent.costs.cli import main as costs_main
 

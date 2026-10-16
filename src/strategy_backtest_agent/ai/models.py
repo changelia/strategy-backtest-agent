@@ -16,6 +16,7 @@ from strategy_backtest_agent.models import StrictModel as StrictModel
 from strategy_backtest_agent.rules.models import RuleStrategy
 from strategy_backtest_agent.sensitivity.models import ParameterSpec, SensitivityConfig
 from strategy_backtest_agent.validation.models import ValidationConfig
+from strategy_backtest_agent.walk_forward.models import WalkForwardConfig
 
 
 class AIStrategyConfig(StrictModel):
@@ -220,6 +221,51 @@ class SensitivityParserOutput(StrictModel):
 
     @model_validator(mode="after")
     def one_outcome(self) -> "SensitivityParserOutput":
+        if (self.configuration is None) == (self.rejection is None):
+            raise ValueError("parser must return either configuration or rejection")
+        return self
+
+
+class WindowExtraction(StrictModel):
+    mode: Literal["rolling", "expanding"] | None
+    train_days: int
+    test_days: int
+    step_days: int | None
+    max_folds: int | None
+
+
+class WalkForwardExtraction(StrictModel):
+    symbol: str | None
+    timeframe: str | None
+    period_days: int | None
+    initial_balance: float | None
+    fee: float | None
+    execution: ExecutionExtraction | None
+    strategies: list[ComparisonStrategyExtraction] = Field(min_length=1, max_length=5)
+    evaluation_end: AwareDatetime | None
+    windows: WindowExtraction
+    stitch_oos: bool | None
+
+    def validated_config(self) -> WalkForwardConfig:
+        values = self.model_dump(exclude_none=True)
+        values["strategies"] = [
+            {"id": f"strategy-{i}", **item.model_dump()}
+            for i, item in enumerate(self.strategies, start=1)
+        ]
+        return WalkForwardConfig.model_validate(values)
+
+
+class WalkForwardParserOutput(StrictModel):
+    configuration: WalkForwardExtraction | None
+    rejection: (
+        Literal[
+            "unsupported", "ambiguous", "missing_symbol", "inconsistent_settings", "strategy_count"
+        ]
+        | None
+    )
+
+    @model_validator(mode="after")
+    def one_outcome(self) -> "WalkForwardParserOutput":
         if (self.configuration is None) == (self.rejection is None):
             raise ValueError("parser must return either configuration or rejection")
         return self
