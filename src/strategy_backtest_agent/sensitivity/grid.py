@@ -8,7 +8,18 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from strategy_backtest_agent.rules.models import Comparison, Group, Indicator, RuleStrategy, Value
+from strategy_backtest_agent.rules.models import (
+    INDICATOR_TYPES,
+    ATRIndicator,
+    BollingerIndicator,
+    Comparison,
+    Group,
+    Indicator,
+    MACDIndicator,
+    RuleStrategy,
+    TechnicalIndicator,
+    Value,
+)
 from strategy_backtest_agent.sensitivity.models import (
     MAX_DIMENSIONS,
     MAX_VARIANTS,
@@ -21,12 +32,19 @@ from strategy_backtest_agent.sensitivity.models import (
 
 @dataclass(frozen=True)
 class Location:
-    operand: Indicator | Value
+    operand: TechnicalIndicator | Value
     comparison: Comparison
+    field: str
 
     @property
     def value(self) -> Number:
-        return self.operand.period if isinstance(self.operand, Indicator) else self.operand.value
+        value = getattr(self.operand, self.field)
+        assert isinstance(value, int | float)
+        return value
+
+    @property
+    def is_period(self) -> bool:
+        return self.field in ("period", "fast_period", "slow_period", "signal_period")
 
     @property
     def is_rsi_threshold(self) -> bool:
@@ -37,7 +55,7 @@ class Location:
 
 
 def locate_parameter(strategy: RuleStrategy, path: str) -> Location:
-    """Only entry/exit(.conditions.N)*.(left|right).(period|value) are mutable."""
+    """Resolve numeric period/multiplier fields or constants at explicit operand paths."""
     parts = path.split(".")
     if not parts or parts[0] not in ("entry", "exit"):
         raise ValueError(f"invalid parameter path {path!r}: start with entry or exit")
@@ -57,18 +75,27 @@ def locate_parameter(strategy: RuleStrategy, path: str) -> Location:
         raise ValueError(f"invalid parameter path {path!r}: select a numeric operand field")
     operand = node.left if parts[cursor] == "left" else node.right
     field = parts[cursor + 1]
-    if isinstance(operand, Indicator) and field == "period":
-        return Location(operand, node)
+    if (
+        isinstance(operand, Indicator | ATRIndicator)
+        and field == "period"
+        or isinstance(operand, MACDIndicator)
+        and field in ("fast_period", "slow_period", "signal_period")
+        or isinstance(operand, BollingerIndicator)
+        and field in ("period", "multiplier")
+    ):
+        return Location(operand, node, field)
     if isinstance(operand, Value) and field == "value":
         other = node.right if parts[cursor] == "left" else node.left
         if isinstance(other, Value):
             raise ValueError(f"unsafe parameter path {path!r}: constant-to-constant comparison")
-        return Location(operand, node)
-    raise ValueError(f"invalid parameter path {path!r}: only indicator period or constant value")
+        return Location(operand, node, field)
+    raise ValueError(
+        f"invalid parameter path {path!r}: only numeric indicator parameters or constant values"
+    )
 
 
 def _number(value: Decimal, location: Location, path: str) -> Number:
-    if isinstance(location.operand, Indicator):
+    if location.is_period:
         if value != value.to_integral_value():
             raise ValueError(f"{path}: indicator periods must be integers")
         return int(value)
@@ -77,7 +104,7 @@ def _number(value: Decimal, location: Location, path: str) -> Number:
 
 def candidate_values(spec: ParameterSpec, location: Location) -> list[Number]:
     if spec.values is not None:
-        if isinstance(location.operand, Indicator) and any(type(v) is not int for v in spec.values):
+        if location.is_period and any(type(v) is not int for v in spec.values):
             raise ValueError(f"{spec.path}: explicit indicator periods must be integer values")
         return list(spec.values)
     if spec.range is not None:
@@ -90,22 +117,20 @@ def candidate_values(spec: ParameterSpec, location: Location) -> list[Number]:
         count = int(intervals) + 1
         if count > MAX_VARIANTS:
             raise ValueError(f"{spec.path}: range exceeds {MAX_VARIANTS} candidates")
-        if isinstance(location.operand, Indicator) and any(
-            v != v.to_integral_value() for v in (start, stop, step)
-        ):
+        if location.is_period and any(v != v.to_integral_value() for v in (start, stop, step)):
             raise ValueError(f"{spec.path}: indicator ranges require integer bounds and step")
         return [_number(start + step * i, location, spec.path) for i in range(count)]
     assert spec.nearby is not None
     step_value = spec.nearby.step
     if step_value is None:
-        if isinstance(location.operand, Indicator):
+        if location.is_period:
             step_value = 1
         elif location.is_rsi_threshold:
             step_value = 5
         else:
             raise ValueError(f"{spec.path}: nearby constants require an explicit step")
     step = Decimal(str(step_value))
-    if isinstance(location.operand, Indicator) and step != step.to_integral_value():
+    if location.is_period and step != step.to_integral_value():
         raise ValueError(f"{spec.path}: nearby indicator step must be an integer")
     base = Decimal(str(location.value))
     return [
@@ -160,8 +185,13 @@ def expand_grid(
             other = locate_parameter(base, path)
             if type(location.operand) is not type(other.operand) or location.value != other.value:
                 raise ValueError(f"{path}: coupled paths must have matching kinds and base values")
-            if isinstance(location.operand, Indicator) and location.operand != other.operand:
-                raise ValueError(f"{path}: coupled indicators must share the same name and period")
+            if location.field != other.field:
+                raise ValueError(f"{path}: coupled paths must select the same numeric field")
+            if isinstance(location.operand, INDICATOR_TYPES):
+                left = location.operand.model_dump(exclude={"component"})
+                right = other.operand.model_dump(exclude={"component"})
+                if left != right:
+                    raise ValueError(f"{path}: coupled indicators must share the same parameters")
             if location.is_rsi_threshold != other.is_rsi_threshold:
                 raise ValueError(f"{path}: cannot couple RSI thresholds with other constants")
         values = candidate_values(spec, location)

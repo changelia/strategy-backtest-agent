@@ -1,0 +1,64 @@
+{
+  "symbol": "BTCUSDT",
+  "timeframe": "1h",
+  "period_days": 90,
+  "initial_balance": 10000,
+  "fee": 0.001,
+  "evaluation_end": "2024-07-01T00:00:00Z",
+  "strategy": {
+    "type": "rules",
+    "entry": {
+      "type": "comparison",
+      "left": {
+        "type": "indicator",
+        "name": "macd",
+        "fast_period": 12,
+        "slow_period": 26,
+        "signal_period": 9,
+        "component": "macd"
+      },
+      "operator": ">",
+      "right": {
+        "type": "indicator",
+        "name": "macd",
+        "fast_period": 12,
+        "slow_period": 26,
+        "signal_period": 9,
+        "component": "signal"
+      }
+    },
+    "exit": {
+      "type": "comparison",
+      "left": {
+        "type": "indicator",
+        "name": "macd",
+        "fast_period": 12,
+        "slow_period": 26,
+        "signal_period": 9,
+        "component": "macd"
+      },
+      "operator": "<",
+      "right": {
+        "type": "indicator",
+        "name": "macd",
+        "fast_period": 12,
+        "slow_period": 26,
+        "signal_period": 9,
+        "component": "signal"
+      }
+    }
+  },
+  "train_ratio": 0.7,
+  "scenarios": [
+    {
+      "id": "baseline",
+      "name": "No spread or slippage"
+    },
+    {
+      "id": "costs",
+      "name": "10 bps spread / 5 bps slippage",
+      "spread_bps": 10,
+      "slippage_bps": 5
+    }
+  ]
+}

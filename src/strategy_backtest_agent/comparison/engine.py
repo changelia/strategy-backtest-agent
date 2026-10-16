@@ -24,6 +24,10 @@ from strategy_backtest_agent.rules.evaluator import (
     warmup_count,
 )
 from strategy_backtest_agent.rules.history import fetch_history, interval_duration, validate_history
+from strategy_backtest_agent.rules.indicator_specs import (
+    indicator_from_key,
+    initialization_profiles,
+)
 from strategy_backtest_agent.rules.models import Indicator, RuleStrategy
 
 
@@ -95,12 +99,18 @@ def prepare_history(
         history_candle_count=len(candles),
         warmup_candles=boundary,
         required_warmup_candles=required,
-        indicators=[
-            Indicator.model_validate({"name": name, "period": period})
-            for name, period in sorted(keys)
-        ],
+        indicators=[indicator_from_key(name, period) for name, period in sorted(keys)],
         candles_sha256=digest.hexdigest(),
     )
+    specs = [indicator_from_key(*key) for key in sorted(keys)]
+    if any(not isinstance(spec, Indicator) for spec in specs):
+        anchors = initialization_profiles(candles, boundary, keys, local_seeds=False)
+        shared = shared.model_copy(
+            update={
+                "indicator_initializations": anchors,
+                "warmup_policy": "advanced indicator-local v1 seeds; legacy shared close seeds",
+            }
+        )
     return resolved_config, boundary, shared
 
 
@@ -117,7 +127,13 @@ def prepare_shared_history(
         candles, config, rules, evaluation_end=evaluation_end, data_source=data_source
     )
     keys = set().union(*(dependencies(rule) for rule in rules))
-    return resolved, boundary, rules, prepare_context(candles, keys), shared
+    return (
+        resolved,
+        boundary,
+        rules,
+        prepare_context(candles, keys, evaluation_start=boundary),
+        shared,
+    )
 
 
 def run_comparison(

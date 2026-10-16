@@ -115,7 +115,7 @@ def test_invalid_extracted_config(kind: str, monkeypatch: pytest.MonkeyPatch) ->
 @pytest.mark.parametrize(
     "text",
     [
-        "Validate MACD on BTCUSDT",
+        "Validate Ichimoku on BTCUSDT",
         "Validate SMA crosses above on BTCUSDT",
         "Validate with random split on BTCUSDT",
         "Validate by shuffling BTCUSDT",

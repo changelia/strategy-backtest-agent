@@ -47,14 +47,13 @@ class StrategyParseError(ValueError):
 # Conservative early rejection of explicit unsupported concepts, not JSON extraction.
 # The structured model rejection also handles semantics, ambiguity and multiple symbols.
 _UNSUPPORTED = (
-    (r"\bmacd\b", "MACD"),
-    (r"\bbollinger\b", "Bollinger Bands"),
+    (r"\bichimoku\b", "Ichimoku"),
     (r"\bleverage\b|\b\d+(?:\.\d+)?\s*x\b", "leverage"),
     (r"\bshort(?:s|[- ]selling|\s+position)?\b", "short selling"),
     (r"\bstop[- ]?loss\b", "stop loss"),
     (r"\btake[- ]?profit\b", "take profit"),
     (
-        r"\bcross(?:es|ing)?\s+(?:above|below|over|under)\b|\bcross(?:over|under)\b",
+        r"\bcross(?:es|ing|over|under)?\b",
         "crossover/crossunder events",
     ),
     (r"\bportfolio\b", "portfolio strategies"),
@@ -86,7 +85,7 @@ def _strategy_configuration(output: ParserOutput) -> AIStrategyConfig:
     if output.rejection is not None:
         raise StrategyParseError(
             f"Request rejected: {output.rejection.replace('_', ' ')}. "
-            "Currently supported: long-only RSI, SMA, EMA level rules"
+            "Currently supported: long-only RSI, SMA, EMA, MACD, Bollinger and ATR level rules"
         )
     assert output.configuration is not None
     return output.configuration.validated_config()
@@ -212,7 +211,7 @@ def _parse_request(
         if re.search(pattern, text, re.IGNORECASE):
             raise StrategyParseError(
                 f"Unsupported strategy: {label}. "
-                "Currently supported: long-only RSI, SMA, EMA level rules"
+                "Currently supported: long-only RSI, SMA, EMA, MACD, Bollinger and ATR level rules"
             )
     model = os.environ.get("OPENAI_MODEL", DEFAULT_MODEL).strip()
     if not model:

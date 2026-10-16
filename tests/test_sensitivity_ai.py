@@ -153,7 +153,7 @@ def test_invalid_extractions_rejected(kind: str, monkeypatch: pytest.MonkeyPatch
 @pytest.mark.parametrize(
     "text",
     [
-        "Analyze MACD on BTCUSDT",
+        "Analyze Ichimoku on BTCUSDT",
         "Analyze 10x leverage on BTCUSDT",
         "Analyze short selling on BTCUSDT",
         "Analyze stop loss on BTCUSDT",

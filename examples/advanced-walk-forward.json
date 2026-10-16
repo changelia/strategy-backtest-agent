@@ -1,0 +1,155 @@
+{
+  "symbol": "BTCUSDT",
+  "timeframe": "1h",
+  "period_days": 360,
+  "initial_balance": 10000,
+  "fee": 0.001,
+  "execution": {
+    "fee_rate": 0.001,
+    "spread_bps": 10,
+    "slippage_bps": 5
+  },
+  "evaluation_end": "2024-07-01T00:00:00Z",
+  "strategies": [
+    {
+      "id": "macd-state",
+      "name": "MACD line above signal",
+      "strategy": {
+        "type": "rules",
+        "entry": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "macd",
+            "fast_period": 12,
+            "slow_period": 26,
+            "signal_period": 9,
+            "component": "macd"
+          },
+          "operator": ">",
+          "right": {
+            "type": "indicator",
+            "name": "macd",
+            "fast_period": 12,
+            "slow_period": 26,
+            "signal_period": 9,
+            "component": "signal"
+          }
+        },
+        "exit": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "macd",
+            "fast_period": 12,
+            "slow_period": 26,
+            "signal_period": 9,
+            "component": "macd"
+          },
+          "operator": "<",
+          "right": {
+            "type": "indicator",
+            "name": "macd",
+            "fast_period": 12,
+            "slow_period": 26,
+            "signal_period": 9,
+            "component": "signal"
+          }
+        }
+      }
+    },
+    {
+      "id": "bollinger",
+      "name": "Bollinger mean reversion",
+      "strategy": {
+        "type": "rules",
+        "entry": {
+          "type": "comparison",
+          "left": {
+            "type": "price"
+          },
+          "operator": "<",
+          "right": {
+            "type": "indicator",
+            "name": "bollinger",
+            "period": 20,
+            "multiplier": 2.0,
+            "component": "lower"
+          }
+        },
+        "exit": {
+          "type": "comparison",
+          "left": {
+            "type": "price"
+          },
+          "operator": ">",
+          "right": {
+            "type": "indicator",
+            "name": "bollinger",
+            "period": 20,
+            "multiplier": 2.0,
+            "component": "middle"
+          }
+        }
+      }
+    },
+    {
+      "id": "atr-rsi",
+      "name": "ATR-filtered RSI",
+      "strategy": {
+        "type": "rules",
+        "entry": {
+          "type": "and",
+          "conditions": [
+            {
+              "type": "comparison",
+              "left": {
+                "type": "indicator",
+                "name": "rsi",
+                "period": 14
+              },
+              "operator": "<",
+              "right": {
+                "type": "value",
+                "value": 30
+              }
+            },
+            {
+              "type": "comparison",
+              "left": {
+                "type": "indicator",
+                "name": "atr",
+                "period": 14
+              },
+              "operator": ">",
+              "right": {
+                "type": "value",
+                "value": 100
+              }
+            }
+          ]
+        },
+        "exit": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "rsi",
+            "period": 14
+          },
+          "operator": ">",
+          "right": {
+            "type": "value",
+            "value": 70
+          }
+        }
+      }
+    }
+  ],
+  "windows": {
+    "mode": "rolling",
+    "train_days": 120,
+    "test_days": 30,
+    "step_days": 30
+  },
+  "stitch_oos": true
+}

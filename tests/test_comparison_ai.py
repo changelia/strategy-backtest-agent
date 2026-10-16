@@ -148,7 +148,7 @@ def test_invalid_structured_response(kind: str, monkeypatch: pytest.MonkeyPatch)
 @pytest.mark.parametrize(
     "text",
     [
-        "Compare MACD and RSI on BTCUSDT",
+        "Compare Ichimoku and RSI on BTCUSDT",
         "Compare SMA 20 crosses above SMA 50 and RSI on BTCUSDT",
         "Compare shorts and RSI on BTCUSDT",
         "Compare short selling and RSI on BTCUSDT",

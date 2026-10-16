@@ -21,6 +21,7 @@ from strategy_backtest_agent.rules.evaluator import (
     prepare_context,
     warmup_count,
 )
+from strategy_backtest_agent.rules.indicator_specs import indicator_key
 from strategy_backtest_agent.rules.models import RuleStrategy
 from strategy_backtest_agent.sensitivity import engine
 from strategy_backtest_agent.sensitivity.engine import fetch_and_analyze, run_sensitivity
@@ -166,7 +167,7 @@ def test_fetch_once_maximum_warmup_unique_cache_and_portfolio_isolation(
     assert (
         report.shared_data.required_warmup_candles == report.shared_data.warmup_candles == required
     )
-    assert [(i.name, i.period) for i in report.shared_data.indicators] == [
+    assert [indicator_key(i) for i in report.shared_data.indicators] == [
         (name, p) for p in [2, 3, 4]
     ]
     # Independent uncached runs use the indicator's own recorded initialization

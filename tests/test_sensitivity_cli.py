@@ -84,6 +84,11 @@ def test_success(
             {
                 "indicator": {"type": "indicator", "name": "rsi", "period": 2},
                 "prior_candle_count": 3,
+                "input_fields": ["close"],
+                "seed_policy": (
+                    "legacy: RSI SMA/Wilder; SMA rolling; EMA first-close; "
+                    "configured history anchor"
+                ),
                 "history_start": "2023-12-31T21:00:00Z",
             }
         ]

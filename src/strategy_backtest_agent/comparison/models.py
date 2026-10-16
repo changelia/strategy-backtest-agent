@@ -15,7 +15,11 @@ from strategy_backtest_agent.models import (
     StrictModel,
     normalize_execution,
 )
-from strategy_backtest_agent.rules.models import Indicator, RuleStrategy
+from strategy_backtest_agent.rules.models import (
+    IndicatorInitialization,
+    RuleStrategy,
+    TechnicalIndicator,
+)
 from strategy_backtest_agent.strategy import legacy_rules
 
 RankingCriterion = Literal["total_return", "excess_return", "max_drawdown", "profit_factor"]
@@ -122,7 +126,8 @@ class SharedData(Model):
     warmup_candles: int = Field(ge=0)
     required_warmup_candles: int = Field(ge=0)
     warmup_policy: str = WARMUP_POLICY
-    indicators: list[Indicator]
+    indicators: list[TechnicalIndicator]
+    indicator_initializations: list[IndicatorInitialization] = Field(default_factory=list)
     candles_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 

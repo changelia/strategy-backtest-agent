@@ -2,9 +2,9 @@
 
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import AwareDatetime, Field, model_validator
 
-from strategy_backtest_agent.models import Model
+from strategy_backtest_agent.models import Model, StrictModel
 
 
 class Price(Model):
@@ -28,7 +28,46 @@ class Indicator(Model):
         return self
 
 
-Operand = Price | Value | Indicator
+class MACDIndicator(Model):
+    type: Literal["indicator"] = "indicator"
+    name: Literal["macd"]
+    fast_period: int = Field(default=12, strict=True, ge=1, le=1000)
+    slow_period: int = Field(default=26, strict=True, ge=1, le=1000)
+    signal_period: int = Field(default=9, strict=True, ge=1, le=1000)
+    component: Literal["macd", "signal", "histogram"] = "macd"
+
+    @model_validator(mode="after")
+    def ordered(self) -> "MACDIndicator":
+        if self.fast_period >= self.slow_period:
+            raise ValueError("MACD fast_period must be strictly less than slow_period")
+        return self
+
+
+class BollingerIndicator(Model):
+    type: Literal["indicator"] = "indicator"
+    name: Literal["bollinger"]
+    period: int = Field(default=20, strict=True, ge=1, le=1000)
+    multiplier: float = Field(default=2.0, strict=True, gt=0)
+    component: Literal["upper", "middle", "lower"]
+
+
+class ATRIndicator(Model):
+    type: Literal["indicator"] = "indicator"
+    name: Literal["atr"]
+    period: int = Field(default=14, strict=True, ge=1, le=1000)
+
+
+TechnicalIndicator = Indicator | MACDIndicator | BollingerIndicator | ATRIndicator
+INDICATOR_TYPES = (Indicator, MACDIndicator, BollingerIndicator, ATRIndicator)
+Operand = Price | Value | TechnicalIndicator
+
+
+class IndicatorInitialization(StrictModel):
+    indicator: TechnicalIndicator
+    prior_candle_count: int = Field(ge=0)
+    history_start: AwareDatetime
+    input_fields: list[str] = Field(default_factory=lambda: ["close"])
+    seed_policy: str = "legacy finite initialization"
 
 
 class Comparison(Model):

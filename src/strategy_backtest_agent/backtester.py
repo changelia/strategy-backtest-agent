@@ -16,9 +16,11 @@ from strategy_backtest_agent.rules.evaluator import (
     Context,
     dependencies,
     evaluate_rule,
+    prepare_context,
     prepare_indicators,
 )
-from strategy_backtest_agent.rules.models import RuleStrategy
+from strategy_backtest_agent.rules.indicator_specs import indicator_from_key
+from strategy_backtest_agent.rules.models import ATRIndicator, Indicator, RuleStrategy
 from strategy_backtest_agent.strategy import legacy_rules, rsi_signals
 
 
@@ -47,12 +49,25 @@ def run_backtest(
         if context.prices != [c.close for c in candles]:
             raise ValueError("prepared context does not match candle closes")
         if any(
+            isinstance(indicator_from_key(*key), ATRIndicator) for key in dependencies(strategy)
+        ):
+            if context.range_inputs != [(c.high, c.low, c.close) for c in candles]:
+                raise ValueError("prepared ATR context does not match candle high/low/close inputs")
+        if any(
             key not in context.indicators or len(context.indicators[key]) != len(candles)
             for key in dependencies(strategy)
         ):
             raise ValueError("prepared context has missing or incomplete indicator series")
     elif strategy is not None:
-        context = prepare_indicators(candles, strategy)
+        context = (
+            prepare_context(candles, dependencies(strategy), evaluation_start=evaluation_start)
+            if evaluation_start
+            and any(
+                not isinstance(indicator_from_key(*key), Indicator)
+                for key in dependencies(strategy)
+            )
+            else prepare_indicators(candles, strategy)
+        )
     signals = rsi_signals(candles, config) if strategy is None else []
     cash = config.initial_balance
     fee = execution.fee_rate

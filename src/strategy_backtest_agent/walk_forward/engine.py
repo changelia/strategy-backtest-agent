@@ -12,7 +12,7 @@ from strategy_backtest_agent.comparison.engine import (
 )
 from strategy_backtest_agent.market_data import MarketDataProvider
 from strategy_backtest_agent.models import Candle
-from strategy_backtest_agent.rules.evaluator import Context, dependencies
+from strategy_backtest_agent.rules.evaluator import dependencies
 from strategy_backtest_agent.rules.history import fetch_history, interval_duration
 from strategy_backtest_agent.sensitivity.cache import prepare_train_context
 from strategy_backtest_agent.sensitivity.models import SensitivitySharedData
@@ -129,10 +129,7 @@ def run_walk_forward(
                 (start, cut, fold.train_start, fold.train_end),
                 (cut, end, fold.test_start, fold.test_end),
             ):
-                prefix = Context(
-                    context.prices[:stop],
-                    {key: values[:stop] for key, values in context.indicators.items()},
-                )
+                prefix = context.prefix(stop)
                 result = run_backtest(
                     candles[:stop], portfolio, rule, evaluation_start=first, context=prefix
                 )

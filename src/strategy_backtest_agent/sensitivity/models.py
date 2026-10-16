@@ -2,11 +2,12 @@
 
 from typing import Literal
 
-from pydantic import AwareDatetime, Field, model_validator
+from pydantic import Field, model_validator
 
 from strategy_backtest_agent.comparison.models import MarketConfig, SharedData
 from strategy_backtest_agent.models import StrictModel
-from strategy_backtest_agent.rules.models import Indicator, RuleStrategy
+from strategy_backtest_agent.rules.models import IndicatorInitialization as IndicatorInitialization
+from strategy_backtest_agent.rules.models import RuleStrategy
 from strategy_backtest_agent.validation.models import ChronologicalSplit, SegmentResult
 
 MAX_VARIANTS = 25
@@ -16,7 +17,8 @@ SIMILARITY_TOLERANCE_PP = 5.0
 Number = int | float
 INITIALIZATION_POLICY = (
     "indicator-local prior closes anchored at first Train open: RSI=p+1; SMA=p; "
-    "EMA=5*p (finite first-close seed); independent of other grid periods"
+    "EMA=5*p; MACD=10*(slow+signal); Bollinger=p (population std); ATR=20*p; "
+    "finite indicator-local seeds independent of other grid periods"
 )
 
 WARNINGS = (
@@ -28,17 +30,12 @@ WARNINGS = (
     "Zero-trade and low-trade configurations are not evidence of stability.",
     "Neighbor observations use declared candidate order, a 5 pp similarity tolerance and at "
     "least 5 trades per configuration. These are descriptive conventions, not significance tests.",
-    "RSI/EMA initialization is finite. Each indicator uses its own anchored prior history; "
+    "RSI/EMA/MACD/ATR initialization is finite. "
+    "Each indicator uses its own anchored prior history; "
     "adding grid periods cannot move an existing indicator seed. "
     "Fills use configured modeled spread/slippage and exclude liquidity constraints; "
     "drawdown samples opens and closes, not intrabar extremes.",
 )
-
-
-class IndicatorInitialization(StrictModel):
-    indicator: Indicator
-    prior_candle_count: int = Field(ge=0)
-    history_start: AwareDatetime
 
 
 class SensitivitySharedData(SharedData):

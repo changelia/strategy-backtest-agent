@@ -13,10 +13,14 @@ from strategy_backtest_agent.demo import demo_candles
 from strategy_backtest_agent.execution import format_costs, format_execution
 from strategy_backtest_agent.market_data import TIMEFRAMES, BinanceMarketData, MarketDataError
 from strategy_backtest_agent.models import BacktestConfig
-from strategy_backtest_agent.rules.evaluator import dependencies, warmup_count
+from strategy_backtest_agent.rules.evaluator import dependencies, prepare_context, warmup_count
 from strategy_backtest_agent.rules.formatter import format_rule
 from strategy_backtest_agent.rules.history import fetch_rule_history
-from strategy_backtest_agent.rules.models import RuleStrategy
+from strategy_backtest_agent.rules.indicator_specs import (
+    indicator_from_key,
+    initialization_profiles,
+)
+from strategy_backtest_agent.rules.models import Indicator, IndicatorInitialization, RuleStrategy
 
 
 def _percent(value: float | None) -> str:
@@ -53,7 +57,17 @@ async def _run(
         )
     if strategy is None and len(candles) <= config.rsi_period:
         raise ValueError("not enough completed candles to calculate RSI; increase days")
-    result = run_backtest(candles, config, strategy, evaluation_start=boundary)
+    anchors: list[IndicatorInitialization] = []
+    context = None
+    if strategy is not None and any(
+        not isinstance(indicator_from_key(*key), Indicator) for key in dependencies(strategy)
+    ):
+        # Preserve legacy shared seeds while locally anchoring advanced dependencies.
+        context = prepare_context(candles, dependencies(strategy), evaluation_start=boundary)
+        anchors = initialization_profiles(
+            candles, boundary, dependencies(strategy), local_seeds=False
+        )
+    result = run_backtest(candles, config, strategy, evaluation_start=boundary, context=context)
     candles = candles[boundary:]
     if as_json:
         payload = {
@@ -77,7 +91,13 @@ async def _run(
             payload["strategy"] = strategy.model_dump(mode="json")
             payload["trading_fee"] = config.trading_fee
             payload["indicator_configuration"] = [
-                {"name": name, "period": period} for name, period in sorted(dependencies(strategy))
+                (
+                    {"name": spec.name, "period": spec.period}
+                    if isinstance(spec, Indicator)
+                    else spec.model_dump(mode="json")
+                )
+                for key in sorted(dependencies(strategy))
+                for spec in [indicator_from_key(*key)]
             ]
             payload["evaluation_period"] = {
                 "requested_start": (end - timedelta(days=days)).isoformat().replace("+00:00", "Z"),
@@ -86,6 +106,10 @@ async def _run(
                 "required_warmup_candles": warmup_count(strategy),
                 "ema_policy": "first-close seed, five spans of prior closes",
             }
+            if anchors:
+                payload["indicator_initializations"] = [
+                    item.model_dump(mode="json") for item in anchors
+                ]
         if ai_context is not None:
             payload = {**ai_context, "backtest_result": payload}
         print(json.dumps(payload, allow_nan=False))
@@ -226,7 +250,8 @@ def _ai_main() -> None:
     from strategy_backtest_agent.ai.parser import StrategyParseError, parse_strategy
 
     parser = argparse.ArgumentParser(
-        prog="strategy-backtest ai", description="Parse a long-only RSI, SMA or EMA rule request"
+        prog="strategy-backtest ai",
+        description="Parse long-only RSI, SMA, EMA, MACD, Bollinger or ATR rules",
     )
     parser.add_argument(
         "text", help="Natural-language historical backtest request (one quoted argument)"

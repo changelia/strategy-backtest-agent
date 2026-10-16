@@ -20,6 +20,7 @@ from strategy_backtest_agent.rules.evaluator import (
     indicator_warmup,
     prepare_context,
 )
+from strategy_backtest_agent.rules.indicator_specs import indicator_key
 from strategy_backtest_agent.rules.models import Rule, RuleStrategy
 from strategy_backtest_agent.sensitivity import engine
 from strategy_backtest_agent.sensitivity.cache import prepare_train_context
@@ -238,7 +239,7 @@ def test_anchored_cache_matches_independent_initialization_and_every_train_prefi
     assert calls == [(p, indicator_warmup(name, p) + 12) for p in (2, 6)]
     assert cache.prices == [c.close for c in train]
     for profile in initializations:
-        key = (profile.indicator.name, profile.indicator.period)
+        key = indicator_key(profile.indicator)
         required = indicator_warmup(*key)
         assert profile.prior_candle_count == required
         assert profile.history_start == candles[boundary - required].timestamp
@@ -267,8 +268,8 @@ def test_mixed_recursive_cache_keys_do_not_collide_or_move_each_others_seeds() -
     )
     for key in keys:
         assert original.indicators[key] == pytest.approx(expanded.indicators[key], nan_ok=True)
-        assert next(p for p in anchors if (p.indicator.name, p.indicator.period) == key) == next(
-            p for p in expanded_anchors if (p.indicator.name, p.indicator.period) == key
+        assert next(p for p in anchors if indicator_key(p.indicator) == key) == next(
+            p for p in expanded_anchors if indicator_key(p.indicator) == key
         )
     assert original.indicators[("rsi", 2)][boundary:] != original.indicators[("ema", 2)][boundary:]
 
@@ -331,7 +332,11 @@ def test_grid_stability_with_unaligned_fixed_end(name: str, threshold: float) ->
     assert reports[0].split.train_start == END - timedelta(hours=23)
     assert reports[0].results[0].train.result == reports[1].results[0].train.result
     short_anchors = [
-        next(p for p in report.shared_data.indicator_initializations if p.indicator.period == 2)
+        next(
+            p
+            for p in report.shared_data.indicator_initializations
+            if indicator_key(p.indicator)[1] == 2
+        )
         for report in reports
     ]
     assert short_anchors[0] == short_anchors[1]

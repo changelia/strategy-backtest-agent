@@ -7,7 +7,6 @@ from strategy_backtest_agent.backtester import run_backtest
 from strategy_backtest_agent.comparison.engine import prepare_shared_history, required_warmup
 from strategy_backtest_agent.market_data import MarketDataProvider
 from strategy_backtest_agent.models import Candle
-from strategy_backtest_agent.rules.evaluator import Context
 from strategy_backtest_agent.rules.history import fetch_history, interval_duration
 from strategy_backtest_agent.validation.models import (
     WARNINGS,
@@ -61,9 +60,7 @@ def run_validation(
         candles, config, evaluation_end=evaluation_end, data_source=data_source
     )
     cut, split = chronological_split(candles, boundary, config.train_ratio, config.timeframe)
-    train_context = Context(
-        context.prices[:cut], {key: values[:cut] for key, values in context.indicators.items()}
-    )
+    train_context = context.prefix(cut)
     portfolio = config.to_backtest_config()
     rows = []
     for named, rule in zip(config.strategies, rules, strict=True):

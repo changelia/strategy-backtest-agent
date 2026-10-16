@@ -15,7 +15,7 @@ WARNINGS = (
     "A single holdout cannot establish robustness; repeated inspection or strategy selection "
     "using Test results contaminates the holdout. "
     "No optimization or winner selection is performed.",
-    "Finite RSI/EMA initialization can affect signals. "
+    "Finite RSI/EMA/MACD/ATR initialization can affect signals. "
     "Fills use configured modeled spread/slippage and exclude "
     "liquidity constraints; drawdown samples opens/closes, not intrabar extremes.",
 )

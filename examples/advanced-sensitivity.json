@@ -1,0 +1,72 @@
+{
+  "symbol": "BTCUSDT",
+  "timeframe": "1h",
+  "period_days": 90,
+  "initial_balance": 10000,
+  "fee": 0.001,
+  "execution": {
+    "fee_rate": 0.001,
+    "spread_bps": 10,
+    "slippage_bps": 5
+  },
+  "evaluation_end": "2024-07-01T00:00:00Z",
+  "base_strategy": {
+    "type": "rules",
+    "entry": {
+      "type": "comparison",
+      "left": {
+        "type": "indicator",
+        "name": "macd",
+        "fast_period": 12,
+        "slow_period": 26,
+        "signal_period": 9,
+        "component": "macd"
+      },
+      "operator": ">",
+      "right": {
+        "type": "indicator",
+        "name": "macd",
+        "fast_period": 12,
+        "slow_period": 26,
+        "signal_period": 9,
+        "component": "signal"
+      }
+    },
+    "exit": {
+      "type": "comparison",
+      "left": {
+        "type": "indicator",
+        "name": "macd",
+        "fast_period": 12,
+        "slow_period": 26,
+        "signal_period": 9,
+        "component": "macd"
+      },
+      "operator": "<",
+      "right": {
+        "type": "indicator",
+        "name": "macd",
+        "fast_period": 12,
+        "slow_period": 26,
+        "signal_period": 9,
+        "component": "signal"
+      }
+    }
+  },
+  "train_ratio": 0.7,
+  "parameters": [
+    {
+      "path": "entry.left.fast_period",
+      "coupled_paths": [
+        "entry.right.fast_period",
+        "exit.left.fast_period",
+        "exit.right.fast_period"
+      ],
+      "values": [
+        10,
+        12,
+        14
+      ]
+    }
+  ]
+}

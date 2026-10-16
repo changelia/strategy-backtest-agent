@@ -18,7 +18,7 @@ WARNINGS = (
     "Strategies selected after inspecting this history do not have independent held-out evidence.",
     "Each Train and Test resets capital and positions; signals never cross segment boundaries.",
     "Indicator-local finite seeds are anchored before the first evaluation candle and continued "
-    "causally across folds. RSI/EMA seed effects can remain near thresholds.",
+    "causally across folds. RSI/EMA/MACD/ATR seed effects can remain near thresholds.",
     "Stitched index compounds normalized independent Test fold returns at fold endpoints only; "
     "it is not a portfolio carrying positions, and has no continuous drawdown statistic.",
     "Constant modeled costs, full fills and unlimited liquidity are assumptions; drawdown "
