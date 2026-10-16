@@ -1006,7 +1006,7 @@ Changing the evaluation start changes the declared initialization protocol.
 
 Every backtest receives only the prefix ending at its segment end, a correspondingly
 truncated cache, and its evaluation_start. Each call resets cash, quantity, trades,
-equity and realized PnL. Prior history initializes indicators only; the first signal
+equity and realized PnL. Each expanding Train remains one continuous segment internally; intermediate days and earlier fold boundaries do not reset its portfolio or force liquidation. Only its own final close does. Independent Test backtests still reset. Prior history initializes indicators only; the first signal
 is the first completed segment candle and executes at the next segment open.
 The last signal cannot cross the boundary; positions liquidate at final segment
 close. Train positions, capital and signals never carry to Test or another fold.
