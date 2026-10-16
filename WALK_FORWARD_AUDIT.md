@@ -63,4 +63,5 @@ remain the existing execution assumptions. Stitched output omits intrafold equit
 and has no continuous drawdown claim. Durations are whole days; no adaptive
 optimization or gap treatment is supported.
 
-Package version remains 0.7.0. No push, merge, version bump or tag was performed.
+At audit completion, the package version was 0.7.0; the audit itself performed no
+push, merge, version bump or tag. Release operations are a separate authorized step.

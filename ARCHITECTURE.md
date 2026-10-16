@@ -967,7 +967,7 @@ between command warm-up policies remain documented limitations.
 
 `walk_forward` reuses the validated DSL, shared history validation, v0.6.0
 indicator-local cache and v0.7.0 `run_backtest` accounting. It introduces no second
-financial engine. Package version remains 0.7.0 pending release authorization.
+financial engine. Introduced in v0.8.0 — Walk-Forward Analysis.
 
 `WalkForwardConfig` extends shared market settings with `windows` (`mode`,
 `train_days`, `test_days`, optional `step_days`, `max_folds`) and `stitch_oos`.

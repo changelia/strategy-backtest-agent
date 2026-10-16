@@ -7,8 +7,8 @@ strategies and tests them on Binance historical candles. OpenAI interprets your
 request; Python calculates indicators, signals, trades, fees, and performance metrics.
 Use the CLI to explore a strategy or export JSON for your own research tools.
 
-Current release: **v0.7.0 — Realistic Execution Modeling**.
-Release tag and package version: **v0.7.0**.
+Current release: **v0.8.0 — Walk-Forward Analysis**.
+Release tag and package version: **v0.8.0**.
 
 ## Quick Start
 
