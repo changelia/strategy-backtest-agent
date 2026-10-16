@@ -48,7 +48,8 @@ preserve v0.2.0 outputs. Regression tests force the old signal path and compare 
 trades against DSL execution on identical data.
 
 The CLI's explicit rule path calls `fetch_rule_history` once. It extends the requested start by
-the largest requirement: RSI p+1, SMA p, EMA 5p prior intervals. It checks continuous history,
+the largest requirement: RSI p+1, SMA p, EMA 5p, MACD 10*(slow+signal),
+Bollinger p or ATR 20p prior intervals. It checks continuous history,
 adequate initialization and evaluation coverage. Binance's existing sequential 1000-row
 pagination, 0.2-second pauses and fail-fast rate-limit behavior remain. Pre-range candles are
 excluded from benchmark and equity and never generate signals. See the historical warm-up policy
@@ -62,7 +63,9 @@ generated executable source, or dynamic code execution are used.
 ## Strategy DSL reference
 
 Operands are completed candle close (`price`), finite numeric constants (`value`), and
-`indicator` with name `rsi`, `sma`, or `ema` and an integer period. RSI periods are 2–500;
+`indicator` with legacy name `rsi`, `sma`, or `ema` and an integer period, or advanced
+MACD/Bollinger/ATR definitions described in [Advanced indicator conventions](#advanced-indicator-conventions).
+RSI periods are 2–500;
 SMA/EMA periods are 2–1000. Comparisons are `<`, `<=`, `>`, and `>=`, including indicator-to-
 indicator comparisons. `and`/`or` groups have at least one child and can nest. A strategy has at
 most 20 comparisons across entry and exit and depth at most 5, counting each root as depth 1.
@@ -213,7 +216,7 @@ AI's default range is 30 days; the original explicit-options CLI keeps its 180-d
 `0.001`. Missing symbol/quote currency is not guessed: write `BTCUSDT`, not just `Bitcoin`.
 Explicit invalid values are not replaced with defaults.
 
-Unsupported requests fail rather than silently becoming RSI: MACD, Bollinger Bands, short
+Unsupported requests fail rather than silently becoming RSI: short
 selling, leverage, stop loss, take profit, crossover/crossunder events, NOT, portfolios/multiple
 symbols, live trading, and price predictions. Contradictory or ambiguous requests also fail. A
 conservative early keyword check rejects explicit unsupported concepts (including negated
@@ -821,7 +824,7 @@ convergence. Comparison and validation retain their prior shared-seed semantics,
 cross-command results can differ for strategies with multiple indicator periods.
 Provider revisions, full-fill assumptions, fixed modeled spread/slippage,
 unlimited liquidity, floating financial arithmetic and open/close-only drawdown remain
-limitations. Stop loss, take profit, leverage, shorts, MACD, crossover operators,
+limitations. Stop loss, take profit, leverage, shorts, crossover operators,
 multi-symbol analysis, automatic optimization, walk-forward and profitability predictions
 remain unsupported. Parameter sensitivity is included in release v0.6.0.
 
@@ -1039,3 +1042,126 @@ constant illustrative costs, unlimited liquidity and open/close drawdown samplin
 retain the limitations of the existing engines. JSON includes precise folds,
 shared metadata, configuration/execution assumptions, ordering policies, full
 segment results, optional index, aggregate definitions and methodology warnings.
+
+
+## Advanced indicator conventions
+
+Every indicator operand requires an explicit `name`; numerical defaults never
+infer an indicator family from an incomplete operand.
+
+The v0.9 implementation extends the existing `type: indicator` operand union,
+comparison operators, nested groups, complexity limits and backtester. No new
+financial engine, provider or execution semantics are introduced. Package version
+remains 0.8.0 pending release authorization. All examples in `examples/advanced-*`
+use the validated schema and a fixed UTC end.
+
+### Definitions and available observations
+
+- MACD: `name: macd`, integer `fast_period`, `slow_period`, `signal_period` in
+  1–1000 (defaults 12/26/9), fast strictly less than slow; component `macd`
+  (default line), `signal` or `histogram`. Price EMAs use alpha=2/(p+1),
+  adjust=False, first-close seed, and hide the first p-1 observations. The line
+  is fast EMA minus slow EMA and first becomes available at local index slow-1.
+  The signal EMA starts at that first available line value, uses the same EMA
+  recurrence, and hides its first signal-1 observations. Signal and histogram
+  first appear at slow+signal-2. Histogram is line minus signal. This explicitly
+  differs from implementations that seed signal using unavailable early MACD
+  or seed price EMAs with an SMA. Components share the same seed and warm-up,
+  so adding a signal/histogram operand cannot change the MACD line.
+- Bollinger: `name: bollinger`, period 1–1000 (default 20), positive finite
+  multiplier (default 2.0), required component upper/middle/lower. Middle is
+  existing SMA(close,p); upper/lower = middle ± multiplier * rolling population
+  std (ddof=0). First output is at p-1. Period 1 and constant prices have zero
+  standard deviation; all three bands coincide. Existing SMA is unchanged.
+- ATR: `name: atr`, period 1–1000 (default 14), no component. It consumes validated
+  high, low and previous close, not close-only changes. At the first local candle
+  TR=high-low (there is no previous local close). Subsequently TR=max(high-low,
+  abs(high-previous close), abs(low-previous close)). ATR's first value at p-1
+  is the arithmetic mean of the first p TRs; subsequent values use
+  ATR=(p-1)/p * previous ATR + TR/p. Period 1 returns TR. ATR revalidates OHLCV
+  model instances and rejects invalid/nonfinite prices or nonincreasing timestamps.
+
+Low-level indicator functions represent unavailable warm-up observations with NaN,
+never with a fabricated value. Rules treat unavailable operands as false; these
+internal NaNs are never serialized as financial metrics. Research history fetching
+rejects insufficient prior data instead of moving evaluation boundaries. Explicit
+nonfinite inputs/parameters and nonfinite available computed outputs are errors.
+
+### Warm-up, dependency identity and metadata
+
+Advanced dependencies always anchor locally before the first eligible evaluation
+candle (or first Train open); rolling/expanding windows continue the same causal
+series, never reseed at fold or Test boundaries. Required prior candles are:
+
+| Indicator | Prior candles | Initialization |
+| --- | --- | --- |
+| MACD, all components | 10*(slow+signal) | First-close price EMAs, first available MACD signal seed |
+| Bollinger, all components | period | Rolling SMA and population std |
+| ATR | 20*period | First TR high-low, SMA TR seed, then Wilder |
+| RSI / SMA / EMA | p+1 / p / 5p | Existing conventions |
+
+MACD is two sequential filters: the policy allocates ten slow-period spans plus
+ten signal-period spans, rather than assuming the legacy EMA 5p policy settles
+both stages. ATR's alpha=1/p decays more slowly than EMA's 2/(p+1); it receives
+20p observations, including its SMA seed. These are fixed deterministic finite
+approximations, not exact infinite-history indicators or guarantees that seed
+error cannot change a near-threshold trade. Even small indicator error can change
+signals. Moving the evaluation start changes the declared seed protocol.
+
+Dependency extraction visits every operand in nested rules. Existing cache keys
+remain (name,period). An advanced key is an opaque pair: canonical JSON of the
+complete validated operand and initialization-policy version 1. It includes every
+period, multiplier and component; callers must use `indicator_key` and
+`indicator_from_key`, not parse the encoding. Future initialization changes require
+a version change. Each component has its own series identity, while MACD and
+Bollinger components with identical calculation parameters share one underlying
+family calculation per cache preparation. Different multipliers, periods or
+families cannot collide. ATR uses the existing fetched OHLCV history, never a
+separate provider request. Input fields are explicit in initialization metadata.
+Prepared ATR contexts retain high/low/close inputs as well as cached values; execution
+rejects stale contexts with matching closes but changed highs/lows. Context prefix
+slicing preserves and truncates these inputs at segment ends.
+
+Sensitivity and walk-forward retain v0.6/v0.8 dependency-local initialization for
+all indicators. Comparison and validation preserve the earlier common legacy
+RSI/SMA/EMA seed: its lookback is the maximum *legacy* dependency warm-up only.
+New advanced dependencies use individual anchors; additional advanced warm-up is
+trimmed from the legacy calculation prefix. Thus adding a longer advanced strategy
+cannot move existing legacy seeds. The older behavior where adding a longer
+legacy indicator can change comparison/validation's common legacy seed remains;
+use the recorded anchors when comparing workflows. Standard direct rule backtests
+with advanced operands anchor advanced series when evaluation_start is supplied;
+legacy-only direct behavior remains unchanged. AI execution uses the same advanced-local/legacy-common
+policy as comparison and records those anchors. A low-level direct
+run at evaluation_start=0 uses only the supplied finite history, with unavailable
+signals false, just as legacy direct runs do.
+
+Shared metadata includes full definitions, input_fields, seed_policy, actual history
+start and preceding count per initialized dependency. Sensitivity/cost/walk-forward
+replace shared-history anchors with the actual local anchors they use. Legacy
+strategy JSON retains its original fields; report initialization metadata gains
+additive fields. Comparison/validation gain indicator_initializations (empty for
+legacy-only reports). Candle SHA256 continues covering full OHLCV and warm-up.
+Execution-cost formulas, reference marking, next-open timing, fresh segment cash,
+final-close liquidation and net Buy & Hold are unchanged.
+
+### Sensitivity and interpretation
+
+Numeric paths use the same entry/exit(.conditions.N)*.(left|right) prefix.
+MACD permits fast_period/slow_period/signal_period; Bollinger period/multiplier;
+ATR period. Components and names are immutable. Period grids require integers,
+while multiplier grids allow finite fractional values. Nearby multipliers need an
+explicit step. Couplings can join identical calculation parameters across MACD
+or Bollinger components, but must name the same field and share all base
+calculation parameters. Every variant is revalidated; fast>=slow, nonpositive
+multipliers and invalid periods reject the entire grid. Existing dimension and
+variant bounds and declared ordering remain in force; seeds cannot move when a
+longer variant is added.
+
+MACD above signal is a persistent state comparison, not a crossing event. Cross,
+crosses, crossing, crossover and crossunder requests remain rejected. AI only
+extracts validated configurations using the existing Responses structured output
+boundary. It computes no series/trades, generates no executable code and selects
+no strategy. ATR volatility thresholds are absolute quote-price units. No stops,
+position sizing by ATR, leverage, shorts, live orders, statistical robustness
+claims or predictions are added.

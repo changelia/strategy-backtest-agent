@@ -256,9 +256,45 @@ scenarios; the first has zero spread/slippage and supplies the comparison baseli
 Fees inherit the shared rate unless explicitly varied. These illustrative assumptions
 are neither Binance cost estimates nor an optimization or recommendation.
 
+## Advanced Technical Indicators
+
+MACD, Bollinger Bands and ATR work with the same nested rule DSL and all research
+commands. Config mode needs no OpenAI key:
+
+```bash
+poetry run strategy-backtest compare --config examples/advanced-comparison.json --json
+poetry run strategy-backtest validate --config examples/advanced-validation.json
+poetry run strategy-backtest sensitivity --config examples/advanced-sensitivity.json
+poetry run strategy-backtest costs --config examples/advanced-costs.json
+poetry run strategy-backtest walk-forward --config examples/advanced-walk-forward.json
+poetry run strategy-backtest ai \
+  'Backtest BTCUSDT on 1h for 90 days. Buy when MACD line is above signal line and RSI is below 35. Sell when MACD line is below signal line.'
+```
+
+Operands keep `type: "indicator"`. MACD uses `name: "macd"`, `fast_period: 12`,
+`slow_period: 26`, `signal_period: 9`, and `component: "macd"`, `"signal"` or
+`"histogram"`. Bollinger uses `name: "bollinger"`, `period: 20`, `multiplier: 2.0`
+and an explicit `component: "upper"`, `"middle"` or `"lower"`. ATR uses
+`name: "atr"`, `period: 14`, and **high/low/previous close**, with no component.
+Numerical defaults apply when omitted; explicit invalid parameters are rejected.
+
+MACD price EMAs seed at the first historical close; its signal EMA seeds at the
+first available MACD value. Bollinger uses **population standard deviation**
+(`ddof=0`). ATR uses an SMA True Range seed followed by Wilder smoothing.
+Warm-up is MACD `10 × (slow + signal)`, Bollinger `period`, ATR `20 × period`
+prior candles. Each new indicator has its own recorded history anchor; finite
+MACD/ATR seeds can still influence threshold-adjacent signals.
+
+`MACD line > signal` is a state condition. **Crosses above/below and crossover
+operators remain unsupported.** Sensitivity accepts MACD `.fast_period`,
+`.slow_period`, `.signal_period`, Bollinger `.period`/`.multiplier`, and ATR
+`.period` paths on operands; invalid combinations fail the whole grid. See
+[ARCHITECTURE.md](ARCHITECTURE.md#advanced-indicator-conventions) for formulas,
+initialization policies and compatibility details.
+
 ## Supported Strategies
 
-- Wilder RSI, SMA, EMA, completed candle close (`price`), and finite numeric constants
+- Wilder RSI, SMA, EMA, MACD, Bollinger Bands, ATR, completed candle close (`price`), and constants
 - Level comparisons: `<`, `<=`, `>`, `>=`, including indicator-to-indicator comparisons
 - AND/OR conditions and clearly specified nested groups
 - One symbol, one long position at a time, full available cash allocation
@@ -281,7 +317,7 @@ poetry run strategy-backtest ai \
 ```
 
 `SMA 20 > SMA 50` is supported. `SMA 20 crosses above SMA 50` is a transition event
-and is rejected. MACD, Bollinger Bands, NOT, stop loss/take profit, short selling,
+and is rejected. NOT, stop loss/take profit, short selling,
 leverage, multiple symbols, live trading, and predictions are unsupported.
 
 ## AI Parsing and Deterministic Execution
