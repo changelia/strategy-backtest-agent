@@ -179,3 +179,48 @@ def test_provider_failures_sanitized(
     )
     assert result.evidence == report.evidence
     assert "sensitive-provider-debug" not in result.model_dump_json()
+
+
+@pytest.mark.parametrize("configured", [None, " configured-model "])
+def test_parser_and_reports_share_default_and_honor_model_override(
+    configured: str | None,
+    native_results: dict[str, dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from test_ai_parser import extraction
+
+    from strategy_backtest_agent.ai import parser
+
+    assert parser.DEFAULT_MODEL == "gpt-4.1-mini"
+    if configured is None:
+        monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    else:
+        monkeypatch.setenv("OPENAI_MODEL", configured)
+    expected = "gpt-4.1-mini" if configured is None else configured.strip()
+    report = build_report(encode(native_results["backtest"]))
+    original_evidence = report.evidence.model_dump_json()
+    calls = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        body = json.loads(request.content)
+        calls.append(body["model"])
+        assert request.url.path == "/v1/responses"
+        assert body["model"] == expected
+        assert body["text"]["format"]["type"] == "json_schema"
+        assert body["text"]["format"]["strict"] is True
+        assert body["store"] is False
+        payload = (
+            {"configuration": extraction(), "rejection": None}
+            if body["input"] == "Backtest BTCUSDT"
+            else output(report)
+        )
+        return httpx2.Response(200, json=response_payload(payload))
+
+    install_transport(monkeypatch, handler)
+    assert parser.parse_strategy("Backtest BTCUSDT").symbol == "BTCUSDT"
+    result = interpret(report)
+    assert calls == [expected, expected]
+    assert result.status == "ai_accepted"
+    assert result.ai_metadata is not None and result.ai_metadata.requested_model == expected
+    assert result.evidence.model_dump_json() == original_evidence
+    assert result.evidence_sha256 == report.evidence_sha256

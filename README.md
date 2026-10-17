@@ -27,8 +27,9 @@ poetry run strategy-backtest ai \
 
 The command displays the parsed strategy and backtest results. Review the parsed
 rules: natural-language interpretation can be wrong even when validation succeeds.
-AI requests send your text to OpenAI and incur API usage charges. `OPENAI_MODEL`
-can override the configured model; it must support Responses and Structured Outputs.
+AI requests send your text to OpenAI and incur API usage charges. Both AI strategy
+parsing and report interpretation default to `gpt-4.1-mini`. `OPENAI_MODEL` overrides
+the default for both features; the selected model must support Responses and Structured Outputs.
 Credentials come from environment variables. `.env` is ignored and is **not loaded
 automatically**. Never include secrets in strategy requests.
 

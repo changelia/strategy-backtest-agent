@@ -37,7 +37,7 @@ from strategy_backtest_agent.sensitivity.models import SensitivityConfig
 from strategy_backtest_agent.validation.models import ValidationConfig
 from strategy_backtest_agent.walk_forward.models import WalkForwardConfig
 
-DEFAULT_MODEL = "gpt-6-luna"
+DEFAULT_MODEL = "gpt-4.1-mini"
 
 
 class StrategyParseError(ValueError):
