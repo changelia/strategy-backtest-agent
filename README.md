@@ -392,7 +392,7 @@ The application does not place orders or connect to private trading endpoints.
 
 ## Evidence-grounded research reports
 
-Generate a report from one existing v0.9 CLI JSON result without fetching prices
+Generate a report from one existing v0.8/v0.9 CLI JSON result without fetching prices
 or rerunning a backtest. Supported inputs: standard backtest (including the AI
 wrapper), comparison, validation, sensitivity, cost scenarios and walk-forward.
 

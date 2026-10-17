@@ -1171,7 +1171,7 @@ claims or predictions are added.
 
 `report --input` reads one existing JSON result. It never calls a data provider or
 backtester. `reports/inputs.py` bounds decoding and chooses an explicit
-`sba-v0.9-<type>/1` adapter. Supported unversioned inputs are the complete v0.9
+`sba-v0.9-<type>/1` adapter. Supported unversioned inputs are the complete v0.8/v0.9
 standard CLI result, AI CLI wrapper, ComparisonResult, ValidationReport,
 SensitivityReport, CostScenarioReport and WalkForwardReport. Missing source
 schema versions remain null; other versions and ambiguous shapes reject rather
@@ -1248,3 +1248,17 @@ and a regression regenerates both byte-for-byte. To generate a new report:
 poetry run strategy-backtest report --input examples/report-source.json --format markdown
 poetry run strategy-backtest report --input examples/report-source.json --format json
 ```
+
+
+### Legacy initialization compatibility
+
+v0.8 local initialization profiles omit the additive v0.9 `input_fields` and
+`seed_policy` fields. For RSI/SMA/EMA only, the complete legacy profile shape is
+accepted without treating model defaults as source assertions. Explicit fields
+must both be present and agree with indicator semantics. Period/dependency,
+prior-count, warm-up and UTC anchor checks always apply. Advanced indicators
+still require complete profiles. v0.8 comparison/validation may omit the profile
+list, which those engines did not yet emit. Missing legacy fields remain absent
+in normalized provenance rather than being invented. Source schema versions
+remain null: unversioned structure cannot authenticate a producer version.
+Tagged v0.8/v0.9 synthetic fixtures cover all six result types.

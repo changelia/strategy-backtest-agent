@@ -1,0 +1,462 @@
+{
+  "configuration": {
+    "symbol": "BTCUSDT",
+    "timeframe": "1h",
+    "period_days": 4,
+    "initial_balance": 1000.0,
+    "fee": 0.001,
+    "execution": {
+      "fee_rate": 0.001,
+      "spread_bps": 10.0,
+      "slippage_bps": 5.0
+    },
+    "evaluation_end": "2024-01-05T00:00:00Z",
+    "base_strategy": {
+      "type": "rules",
+      "entry": {
+        "type": "comparison",
+        "left": {
+          "type": "indicator",
+          "name": "rsi",
+          "period": 14
+        },
+        "operator": "<",
+        "right": {
+          "type": "value",
+          "value": 30.0
+        }
+      },
+      "exit": {
+        "type": "comparison",
+        "left": {
+          "type": "indicator",
+          "name": "rsi",
+          "period": 14
+        },
+        "operator": ">",
+        "right": {
+          "type": "value",
+          "value": 70.0
+        }
+      }
+    },
+    "parameters": [
+      {
+        "path": "entry.right.value",
+        "coupled_paths": [],
+        "values": [
+          30.0,
+          35.0
+        ],
+        "range": null,
+        "nearby": null
+      }
+    ],
+    "train_ratio": 0.7
+  },
+  "shared_data": {
+    "source": "synthetic offline versioned fixture",
+    "evaluation_start": "2024-01-01T00:00:00Z",
+    "evaluation_end": "2024-01-05T00:00:00Z",
+    "first_candle_open": "2024-01-01T00:00:00Z",
+    "last_candle_open": "2024-01-04T23:00:00Z",
+    "candle_count": 96,
+    "history_candle_count": 111,
+    "warmup_candles": 15,
+    "required_warmup_candles": 15,
+    "warmup_policy": "indicator-local prior closes anchored at first Train open: RSI=p+1; SMA=p; EMA=5*p (finite first-close seed); independent of other grid periods",
+    "indicators": [
+      {
+        "type": "indicator",
+        "name": "rsi",
+        "period": 14
+      }
+    ],
+    "candles_sha256": "ed64f95893aa94fe30b1abe2aa608abd561c38f073fbdc62bf0fc9f4299139ad",
+    "indicator_initializations": [
+      {
+        "indicator": {
+          "type": "indicator",
+          "name": "rsi",
+          "period": 14
+        },
+        "prior_candle_count": 15,
+        "history_start": "2023-12-31T09:00:00Z"
+      }
+    ]
+  },
+  "split": {
+    "train_ratio": 0.7,
+    "train_start": "2024-01-01T00:00:00Z",
+    "train_end": "2024-01-03T19:00:00Z",
+    "test_start": "2024-01-03T19:00:00Z",
+    "test_end": "2024-01-05T00:00:00Z",
+    "train_candle_count": 67,
+    "test_candle_count": 29,
+    "policy": "floor(N * train_ratio); contiguous half-open UTC candle intervals [start, end)"
+  },
+  "parameters": [
+    {
+      "path": "entry.right.value",
+      "coupled_paths": [],
+      "base_value": 30.0,
+      "values": [
+        30.0,
+        35.0
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "id": "variant-001",
+      "coordinates": [
+        0
+      ],
+      "parameter_values": {
+        "entry.right.value": 30.0
+      },
+      "strategy": {
+        "type": "rules",
+        "entry": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "rsi",
+            "period": 14
+          },
+          "operator": "<",
+          "right": {
+            "type": "value",
+            "value": 30.0
+          }
+        },
+        "exit": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "rsi",
+            "period": 14
+          },
+          "operator": ">",
+          "right": {
+            "type": "value",
+            "value": 70.0
+          }
+        }
+      }
+    },
+    {
+      "id": "variant-002",
+      "coordinates": [
+        1
+      ],
+      "parameter_values": {
+        "entry.right.value": 35.0
+      },
+      "strategy": {
+        "type": "rules",
+        "entry": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "rsi",
+            "period": 14
+          },
+          "operator": "<",
+          "right": {
+            "type": "value",
+            "value": 35.0
+          }
+        },
+        "exit": {
+          "type": "comparison",
+          "left": {
+            "type": "indicator",
+            "name": "rsi",
+            "period": 14
+          },
+          "operator": ">",
+          "right": {
+            "type": "value",
+            "value": 70.0
+          }
+        }
+      }
+    }
+  ],
+  "results": [
+    {
+      "variant_id": "variant-001",
+      "train": {
+        "start": "2024-01-01T00:00:00Z",
+        "end": "2024-01-03T19:00:00Z",
+        "candle_count": 67,
+        "warmup_candles": 15,
+        "result": {
+          "initial_balance": 1000.0,
+          "final_balance": 1815.5010281420439,
+          "total_return_percent": 81.55010281420438,
+          "buy_and_hold_return_percent": 11.394997804419837,
+          "total_trades": 2,
+          "winning_trades": 2,
+          "losing_trades": 0,
+          "win_rate": 100.0,
+          "max_drawdown_percent": -5.829513910815798,
+          "profit_factor": null,
+          "trades": [
+            {
+              "entry_time": "2024-01-01T20:00:00Z",
+              "entry_price": 84.94881404393527,
+              "exit_time": "2024-01-02T12:00:00Z",
+              "exit_price": 115.75748391970608,
+              "quantity": 11.760034677874593,
+              "pnl": 359.9507130941347,
+              "pnl_percent": 35.99507130941347,
+              "entry_execution": {
+                "side": "buy",
+                "reference_price": 84.86395009384144,
+                "fill_price": 84.94881404393527,
+                "quantity": 11.760034677874593,
+                "fee": 0.999000999000999,
+                "spread_adjustment_per_unit": 0.04243197504692072,
+                "slippage_adjustment_per_unit": 0.04243197504692072,
+                "modeled_spread_cost": 0.4990014980024971,
+                "modeled_slippage_cost": 0.4990014980024971,
+                "forced": false
+              },
+              "exit_execution": {
+                "side": "sell",
+                "reference_price": 115.87335727698306,
+                "fill_price": 115.75748391970608,
+                "quantity": 11.760034677874593,
+                "fee": 1.361312025119254,
+                "spread_adjustment_per_unit": 0.05793667863849153,
+                "slippage_adjustment_per_unit": 0.05793667863849153,
+                "modeled_spread_cost": 0.6813373499095365,
+                "modeled_slippage_cost": 0.6813373499095365,
+                "forced": false
+              }
+            },
+            {
+              "entry_time": "2024-01-03T04:00:00Z",
+              "entry_price": 83.5269140889052,
+              "exit_time": "2024-01-03T18:00:00Z",
+              "exit_price": 111.72962882385032,
+              "quantity": 16.265321612709048,
+              "pnl": 455.5503150479092,
+              "pnl_percent": 33.49756065875722,
+              "entry_execution": {
+                "side": "buy",
+                "reference_price": 83.44347061828692,
+                "fill_price": 83.5269140889052,
+                "quantity": 16.265321612709048,
+                "fee": 1.3585921209731617,
+                "spread_adjustment_per_unit": 0.041721735309143464,
+                "slippage_adjustment_per_unit": 0.041721735309143464,
+                "modeled_spread_cost": 0.6786174430435374,
+                "modeled_slippage_cost": 0.6786174430435374,
+                "forced": false
+              },
+              "exit_execution": {
+                "side": "sell",
+                "reference_price": 111.84147029414446,
+                "fill_price": 111.72962882385032,
+                "quantity": 16.265321612709048,
+                "fee": 1.8173183464885323,
+                "spread_adjustment_per_unit": 0.05592073514707223,
+                "slippage_adjustment_per_unit": 0.05592073514707223,
+                "modeled_spread_cost": 0.9095687419862524,
+                "modeled_slippage_cost": 0.9095687419862524,
+                "forced": true
+              }
+            }
+          ],
+          "execution": {
+            "fee_rate": 0.001,
+            "spread_bps": 10.0,
+            "slippage_bps": 5.0
+          },
+          "costs": {
+            "fees": 5.536223491581947,
+            "modeled_spread_cost": 2.7685250329418234,
+            "modeled_slippage_cost": 2.7685250329418234
+          },
+          "benchmark_costs": {
+            "fees": 2.114066042088285,
+            "modeled_spread_cost": 1.0570921101582957,
+            "modeled_slippage_cost": 1.0570921101582957
+          },
+          "equity_policy": "reference_prices",
+          "benchmark_policy": "net first evaluation open to final close under the same execution costs",
+          "execution_warnings": [
+            "OHLC prices are mid-price proxies; historical Binance candles do not provide bid/ask quotes.",
+            "Spread and slippage are illustrative modeled adjustments, not separately observed historical costs.",
+            "Open positions are marked at reference prices; costs apply only on actual fills. Full fills, fractional quantities and unlimited liquidity are assumed; no impact or partial fills."
+          ]
+        },
+        "excess_return_pp": 70.15510500978453
+      },
+      "observation": "insufficient_trades"
+    },
+    {
+      "variant_id": "variant-002",
+      "train": {
+        "start": "2024-01-01T00:00:00Z",
+        "end": "2024-01-03T19:00:00Z",
+        "candle_count": 67,
+        "warmup_candles": 15,
+        "result": {
+          "initial_balance": 1000.0,
+          "final_balance": 1582.6477177517515,
+          "total_return_percent": 58.26477177517515,
+          "buy_and_hold_return_percent": 11.394997804419837,
+          "total_trades": 2,
+          "winning_trades": 2,
+          "losing_trades": 0,
+          "win_rate": 100.0,
+          "max_drawdown_percent": -12.32347471501395,
+          "profit_factor": null,
+          "trades": [
+            {
+              "entry_time": "2024-01-01T18:00:00Z",
+              "entry_price": 91.24074072523705,
+              "exit_time": "2024-01-02T12:00:00Z",
+              "exit_price": 115.75748391970608,
+              "quantity": 10.949067171751675,
+              "pnl": 266.1690306027565,
+              "pnl_percent": 26.61690306027565,
+              "entry_execution": {
+                "side": "buy",
+                "reference_price": 91.14959113410295,
+                "fill_price": 91.24074072523705,
+                "quantity": 10.949067171751675,
+                "fee": 0.999000999000999,
+                "spread_adjustment_per_unit": 0.045574795567051476,
+                "slippage_adjustment_per_unit": 0.045574795567051476,
+                "modeled_spread_cost": 0.4990014980024971,
+                "modeled_slippage_cost": 0.4990014980024971,
+                "forced": false
+              },
+              "exit_execution": {
+                "side": "sell",
+                "reference_price": 115.87335727698306,
+                "fill_price": 115.75748391970608,
+                "quantity": 10.949067171751675,
+                "fee": 1.2674364670698262,
+                "spread_adjustment_per_unit": 0.05793667863849153,
+                "slippage_adjustment_per_unit": 0.05793667863849153,
+                "modeled_spread_cost": 0.6343525861210342,
+                "modeled_slippage_cost": 0.6343525861210342,
+                "forced": false
+              }
+            },
+            {
+              "entry_time": "2024-01-03T02:00:00Z",
+              "entry_price": 89.2086973599948,
+              "exit_time": "2024-01-03T18:00:00Z",
+              "exit_price": 111.72962882385032,
+              "quantity": 14.179157009454556,
+              "pnl": 316.47868714899505,
+              "pnl_percent": 24.994979303698194,
+              "entry_execution": {
+                "side": "buy",
+                "reference_price": 89.1195777822126,
+                "fill_price": 89.2086973599948,
+                "quantity": 14.179157009454556,
+                "fee": 1.2649041264762806,
+                "spread_adjustment_per_unit": 0.0445597888911063,
+                "slippage_adjustment_per_unit": 0.0445597888911063,
+                "modeled_spread_cost": 0.6318202429951452,
+                "modeled_slippage_cost": 0.6318202429951452,
+                "forced": false
+              },
+              "exit_execution": {
+                "side": "sell",
+                "reference_price": 111.84147029414446,
+                "fill_price": 111.72962882385032,
+                "quantity": 14.179157009454556,
+                "fee": 1.584231949701453,
+                "spread_adjustment_per_unit": 0.05592073514707223,
+                "slippage_adjustment_per_unit": 0.05592073514707223,
+                "modeled_spread_cost": 0.792908883734461,
+                "modeled_slippage_cost": 0.792908883734461,
+                "forced": true
+              }
+            }
+          ],
+          "execution": {
+            "fee_rate": 0.001,
+            "spread_bps": 10.0,
+            "slippage_bps": 5.0
+          },
+          "costs": {
+            "fees": 5.115573542248558,
+            "modeled_spread_cost": 2.5580832108531375,
+            "modeled_slippage_cost": 2.5580832108531375
+          },
+          "benchmark_costs": {
+            "fees": 2.114066042088285,
+            "modeled_spread_cost": 1.0570921101582957,
+            "modeled_slippage_cost": 1.0570921101582957
+          },
+          "equity_policy": "reference_prices",
+          "benchmark_policy": "net first evaluation open to final close under the same execution costs",
+          "execution_warnings": [
+            "OHLC prices are mid-price proxies; historical Binance candles do not provide bid/ask quotes.",
+            "Spread and slippage are illustrative modeled adjustments, not separately observed historical costs.",
+            "Open positions are marked at reference prices; costs apply only on actual fills. Full fills, fractional quantities and unlimited liquidity are assumed; no impact or partial fills."
+          ]
+        },
+        "excess_return_pp": 46.86977397075531
+      },
+      "observation": "insufficient_trades"
+    }
+  ],
+  "summary": {
+    "variant_count": 2,
+    "minimum_return_percent": 58.26477177517515,
+    "median_return_percent": 69.90743729468977,
+    "maximum_return_percent": 81.55010281420438,
+    "return_range_pp": 23.28533103902923,
+    "positive_return_percent": 100.0,
+    "outperforming_buy_and_hold_percent": 100.0,
+    "insufficient_trade_variant_ids": [
+      "variant-001",
+      "variant-002"
+    ],
+    "minimum_observation_trades": 5,
+    "similarity_tolerance_pp": 5.0
+  },
+  "neighbors": [
+    {
+      "first_variant_id": "variant-001",
+      "second_variant_id": "variant-002",
+      "parameter_path": "entry.right.value",
+      "return_difference_pp": -23.28533103902923,
+      "sufficient_trades": false
+    }
+  ],
+  "ordered_series": [
+    {
+      "value": 30.0,
+      "variant_id": "variant-001",
+      "return_percent": 81.55010281420438,
+      "total_trades": 2
+    },
+    {
+      "value": 35.0,
+      "variant_id": "variant-002",
+      "return_percent": 58.26477177517515,
+      "total_trades": 2
+    }
+  ],
+  "matrix": null,
+  "execution_assumptions": "fresh full-cash long-only portfolio per variant; completed Train close signals at next Train open; configured execution costs; forced liquidation at final Train close; no trades, benchmark, equity or indicator preparation on Test",
+  "methodology_warnings": [
+    "All performance is in-sample sensitivity analysis on Train only. Test is reserved and not evaluated; no strategy is ranked, selected or recommended.",
+    "Repeated parameter experimentation can overfit Train. Freeze a preselected configuration before a separate explicit held-out evaluation; a previously inspected Test is contaminated.",
+    "Statistics describe only this declared grid, not future profitability or robustness. Zero-trade and low-trade configurations are not evidence of stability.",
+    "Neighbor observations use declared candidate order, a 5 pp similarity tolerance and at least 5 trades per configuration. These are descriptive conventions, not significance tests.",
+    "RSI/EMA initialization is finite. Each indicator uses its own anchored prior history; adding grid periods cannot move an existing indicator seed. Fills use configured modeled spread/slippage and exclude liquidity constraints; drawdown samples opens and closes, not intrabar extremes."
+  ]
+}

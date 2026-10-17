@@ -209,8 +209,13 @@ def adapt(raw: dict[str, Any]) -> tuple[ResearchInput, str, str]:
     shared = raw.get("shared_data")
     from strategy_backtest_agent.comparison.models import SharedData
 
-    if not isinstance(shared, dict) or not set(SharedData.model_fields) <= shared.keys():
-        raise ValueError("missing required v0.9 shared-data provenance fields")
+    required_shared = set(SharedData.model_fields)
+    # Comparison/validation v0.8 did not emit initialization profiles at all.
+    # Local-seed engines always did; advanced indicators require v0.9 profiles.
+    if kind in ("comparison", "validation"):
+        required_shared.remove("indicator_initializations")
+    if not isinstance(shared, dict) or not required_shared <= shared.keys():
+        raise ValueError("missing required shared-data provenance fields")
     return model.model_validate_json(encoded, strict=True), f"sba-v0.9-{kind}/1", ""
 
 

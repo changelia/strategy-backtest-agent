@@ -334,11 +334,21 @@ def check_dependencies(
             if isinstance(anchor.indicator, Indicator) and not local
             else prior_candles(anchor.indicator)
         )
+        # v0.8 anchors contain only indicator/count/history_start. Missing
+        # additive v0.9 fields are unknown, not contradictory model defaults.
+        details = {"input_fields", "seed_policy"} & anchor.model_fields_set
+        legacy_shape = isinstance(anchor.indicator, Indicator) and not details
         require(
             anchor.prior_candle_count == count
             and count <= shared.warmup_candles
-            and anchor.input_fields == input_fields(anchor.indicator)
-            and anchor.seed_policy == initialization_policy(anchor.indicator),
+            and (
+                legacy_shape
+                or (
+                    details == {"input_fields", "seed_policy"}
+                    and anchor.input_fields == input_fields(anchor.indicator)
+                    and anchor.seed_policy == initialization_policy(anchor.indicator)
+                )
+            ),
             "/shared_data/indicator_initializations",
             "initialization policy or input fields contradict indicator definitions",
         )

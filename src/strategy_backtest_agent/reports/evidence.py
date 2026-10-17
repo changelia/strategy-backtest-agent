@@ -524,7 +524,21 @@ def build_report(content: bytes) -> ResearchReport:
     evidence = ResearchEvidence(
         source=source,
         configuration=configuration,
-        reproducibility_metadata=data.shared_data.model_dump(mode="json")
+        reproducibility_metadata={
+            **data.shared_data.model_dump(mode="json", exclude_unset=True),
+            # Preserve absent legacy fields rather than presenting Pydantic
+            # defaults as provenance supplied by the original research file.
+            **(
+                {
+                    "indicator_initializations": [
+                        anchor.model_dump(mode="json", exclude_unset=True)
+                        for anchor in data.shared_data.indicator_initializations
+                    ]
+                }
+                if "indicator_initializations" in data.shared_data.model_fields_set
+                else {}
+            ),
+        }
         if not isinstance(data, CLIBacktest)
         else {
             "indicator_configuration": [
