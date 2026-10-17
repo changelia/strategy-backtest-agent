@@ -7,8 +7,8 @@ strategies and tests them on Binance historical candles. OpenAI interprets your
 request; Python calculates indicators, signals, trades, fees, and performance metrics.
 Use the CLI to explore a strategy or export JSON for your own research tools.
 
-Current release: **v0.9.0 — Advanced Technical Indicators**.
-Release tag and package version: **v0.9.0**.
+Current release: **v1.0.0 — Evidence-Grounded AI Research Reports**.
+Release tag and package version: **v1.0.0**. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick Start
 
@@ -38,6 +38,10 @@ Try the deterministic offline demo without credentials or network access:
 ```bash
 poetry run strategy-backtest --demo --days 30
 ```
+
+The demo is a reproducibility and CLI example, not a profitability example.
+The default 180-day run returns -98.77% (45 losing trades); this matches v0.9.0
+exactly under the fixed synthetic candles and existing RSI/execution rules.
 
 ## Example Output
 
@@ -393,8 +397,8 @@ The application does not place orders or connect to private trading endpoints.
 
 ## Evidence-grounded research reports
 
-Generate a report from one existing v0.8/v0.9 CLI JSON result without fetching prices
-or rerunning a backtest. Supported inputs: standard backtest (including the AI
+Generate a report from one existing v0.8/v0.9-compatible CLI JSON result (also
+emitted by v1.0.0) without fetching prices or rerunning a backtest. Supported inputs: standard backtest (including the AI
 wrapper), comparison, validation, sensitivity, cost scenarios and walk-forward.
 
 ```bash

@@ -478,7 +478,7 @@ single runs and cannot establish which strategy will be profitable in the future
 
 ### Release metadata
 
-The v0.7.0 release tag and `pyproject.toml` package version are aligned at 0.7.0.
+At the v0.7.0 release, the tag and package version were aligned at 0.7.0.
 Earlier tags may retain historical metadata mismatches; they are not modified.
 The release follows the financial audit, quality gates and a fast-forward main merge.
 
@@ -870,7 +870,7 @@ SHA256 differs. JSON/CLI and the pre-v0.6.0 regression suites continue to guard 
 
 ## Deterministic execution costs (v0.7.0)
 
-The package version is 0.7.0. `models.ExecutionConfig`
+Introduced in v0.7.0, `models.ExecutionConfig`
 and `execution.quote_execution` provide one strict execution implementation for all
 engines. Strategy rules, indicators, next-open timing and initialization formulas
 are unchanged. Legacy configs containing only `fee` remain valid; nested
@@ -1280,3 +1280,22 @@ and removes controls; ordinary colons and quotation marks remain readable.
 No input hash, normalized evidence, observation, AI constraint or JSON field is
 changed by rendering. Six synthetic snapshots and pinned JSON hashes cover the
 presentation boundary.
+
+
+### v1.0.0 release verification
+
+The package release is v1.0.0; research result shapes remain compatible with v0.9,
+and report schema 1.0 / generator research-reports/1 remain separate version fields.
+All six v0.8/v0.9 tagged synthetic result fixtures retain their financial values.
+No backtester, indicator, portfolio, benchmark or research-engine calculation changed
+for this release. The existing CLI only gains the report dispatch; the shared AI
+default is corrected to gpt-4.1-mini, with OPENAI_MODEL override preserved.
+
+The unchanged default 180-day offline demo is intentionally not a profitability
+example. Its sine-wave candles and legacy RSI timing produce 45 losing trades,
+final balance 123.09 from 10000, return -98.77%, and net Buy & Hold +6.98%.
+Full demo JSON matches the v0.9.0 tagged implementation byte-for-byte. Negative
+performance is retained; no accounting or synthetic candles were adjusted to make
+it look attractive. The demo exercises reproducibility and command behavior rather
+than validating real-market predictive value. Release tests use mocked OpenAI
+responses; they do not establish live API account access or real-model behavior.
