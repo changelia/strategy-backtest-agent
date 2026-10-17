@@ -26,3 +26,9 @@ def native_results() -> dict[str, dict[str, Any]]:
     from report_fixtures import make_native_results
 
     return make_native_results()
+
+
+@pytest.fixture(autouse=True)
+def isolate_local_dotenv(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests must never load developer credentials; dotenv-specific tests opt in."""
+    monkeypatch.setenv("PYTHON_DOTENV_DISABLED", "1")

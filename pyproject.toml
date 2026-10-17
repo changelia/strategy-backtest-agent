@@ -17,6 +17,7 @@ pandas = "^2.2"
 httpx = "^0.28"
 pydantic = "^2.10"
 openai = "^3.24.0"
+python-dotenv = "^1.2.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3"

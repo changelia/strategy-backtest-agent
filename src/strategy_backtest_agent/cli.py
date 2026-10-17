@@ -6,6 +6,7 @@ import json
 import sys
 from datetime import UTC, datetime, timedelta
 
+from dotenv import find_dotenv, load_dotenv
 from pydantic import ValidationError
 
 from strategy_backtest_agent.backtester import run_backtest
@@ -145,7 +146,8 @@ async def _run(
 
 
 def main() -> None:
-    """Validate CLI input and run a single historical backtest."""
+    """Load local settings once, then dispatch the requested CLI command."""
+    load_dotenv(dotenv_path=find_dotenv(usecwd=True), override=False)
     if sys.argv[1:2] == ["report"]:
         from strategy_backtest_agent.reports.cli import main as report_main
 

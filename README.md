@@ -30,8 +30,7 @@ rules: natural-language interpretation can be wrong even when validation succeed
 AI requests send your text to OpenAI and incur API usage charges. Both AI strategy
 parsing and report interpretation default to `gpt-4.1-mini`. `OPENAI_MODEL` overrides
 the default for both features; the selected model must support Responses and Structured Outputs.
-Credentials come from environment variables. `.env` is ignored and is **not loaded
-automatically**. Never include secrets in strategy requests.
+Never include secrets in strategy requests. See configuration below for shell and `.env` settings.
 
 Try the deterministic offline demo without credentials or network access:
 
@@ -75,6 +74,20 @@ Win Rate: +0.00%
 Max Drawdown: -52.87%
 Profit Factor: 0.00
 ```
+
+## Configuration
+
+The CLI automatically loads `.env` from the current directory or nearest parent
+once at startup, before dispatching any command. For example:
+
+```dotenv
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+Existing shell variables always take precedence (`override=False`). You can still
+configure both values with `export`; no `.env` is required. `.env` is already
+ignored by Git—never commit credentials. Offline reports and demo need no API key.
 
 ## Compare Strategies
 

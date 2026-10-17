@@ -1299,3 +1299,15 @@ performance is retained; no accounting or synthetic candles were adjusted to mak
 it look attractive. The demo exercises reproducibility and command behavior rather
 than validating real-market predictive value. Release tests use mocked OpenAI
 responses; they do not establish live API account access or real-model behavior.
+
+
+### CLI environment configuration
+
+The common CLI entry point calls python-dotenv once before subcommand dispatch,
+using `find_dotenv(usecwd=True)` and `load_dotenv(..., override=False)`. Discovery
+starts at the caller's working directory and walks parents; explicit shell values
+for OPENAI_API_KEY, OPENAI_MODEL and other settings take precedence. No .env is
+required. Library calls do not implicitly load files. Existing SDK credential/model
+reads remain unchanged and consume the resulting environment. Tests disable ambient
+.env loading and explicitly opt into isolated temporary files for regression cases;
+developer credentials are never needed for the offline suite.
