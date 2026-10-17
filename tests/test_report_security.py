@@ -130,7 +130,7 @@ def test_markdown_injection_is_data_not_structure(
     rendered = markdown(report)
     assert "\n# Forged section" not in rendered and "<script>" not in rendered
     assert "[evil](" not in rendered and "```" not in rendered
-    assert "&#" in rendered
+    assert "&lt;script&gt;" in rendered
     assert report.evidence.scopes[0].label == attack
 
 

@@ -404,6 +404,8 @@ poetry run strategy-backtest report --input examples/report-source.json --ai --f
 ```
 
 Deterministic mode needs no API key. See the [synthetic example report](examples/research-report.md).
+Markdown shows unique readable rules, compact segment tables and short row references;
+full evidence identifiers and source paths remain in JSON.
 Output files must be new; existing files are never overwritten. JSON stdout is one
 object. Exit 0 means a deterministic report was generated, including when optional
 AI is unavailable or rejected; its status and stderr explain the fallback. Invalid

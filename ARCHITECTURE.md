@@ -1262,3 +1262,21 @@ list, which those engines did not yet emit. Missing legacy fields remain absent
 in normalized provenance rather than being invented. Source schema versions
 remain null: unversioned structure cannot authenticate a producer version.
 Tagged v0.8/v0.9 synthetic fixtures cover all six result types.
+
+
+### Human-readable Markdown
+
+Markdown is a presentation of the unchanged evidence contract. Unique rule
+structures are formatted once with the existing DSL formatter. Nested configuration
+and initialization metadata become individual labeled rows; financial segment
+metrics become compact returns/benchmark, trade and cost tables, grouped by
+strategy for Walk-Forward. Short R row references connect metrics to exact UTC
+Train/Test boundaries. Every segment and undefined/negative value remains visible;
+full identifiers, source paths and per-metric contexts stay in JSON. Executive
+sentences replace machine scope prefixes with readable labels. Optional AI uses
+the same short references without changing accepted statements or grounding.
+Markdown escapes syntax with backslashes, HTML delimiters with named entities,
+and removes controls; ordinary colons and quotation marks remain readable.
+No input hash, normalized evidence, observation, AI constraint or JSON field is
+changed by rendering. Six synthetic snapshots and pinned JSON hashes cover the
+presentation boundary.

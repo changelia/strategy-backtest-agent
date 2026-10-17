@@ -1,19 +1,29 @@
-"""Deterministic GitHub Markdown; all untrusted text is escaped as cell data."""
+"""Compact deterministic Markdown. JSON evidence and research calculations are unchanged."""
 
 import json
 import unicodedata
-from collections.abc import Callable
+from collections import OrderedDict
+from datetime import datetime
+from typing import Any
 
-from strategy_backtest_agent.reports.models import EvidenceMetric, ResearchReport
+from strategy_backtest_agent.reports.models import EvidenceMetric, EvidenceScope, ResearchReport
+from strategy_backtest_agent.rules.formatter import format_rule
+from strategy_backtest_agent.rules.models import RuleStrategy
 
 
 def cell(value: object) -> str:
     text = str(value).replace("\n", " ").replace("\r", " ").replace("\t", " ")
-    return "".join(
-        c if c.isalnum() or c in " .,/-" else f"&#{ord(c)};"
-        for c in text
-        if unicodedata.category(c) not in ("Cf", "Cc")
-    )
+    escaped = []
+    for char in text:
+        if unicodedata.category(char) in ("Cf", "Cc"):
+            continue
+        if char in "&<>":
+            escaped.append({"&": "&amp;", "<": "&lt;", ">": "&gt;"}[char])
+        elif char in "\\`*_{}[]|#!":
+            escaped.append("\\" + char)
+        else:
+            escaped.append(char)
+    return "".join(escaped)
 
 
 def format_metric(metric: EvidenceMetric) -> str:
@@ -26,12 +36,167 @@ def format_metric(metric: EvidenceMetric) -> str:
         number = f"{value:.4f}"
     else:
         number = f"{value:.8g}"
-    return f"{number} {metric.unit}"
+    if metric.unit == "count":
+        return number
+    unit = "quote" if metric.unit == "quote_currency" else metric.unit
+    return f"{number} {unit}"
+
+
+def title(value: str) -> str:
+    return value.replace("_", " ").capitalize().replace("test ", "Test ")
+
+
+def scalar(value: Any) -> str:
+    if value is None:
+        return "Not provided"
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    return str(value)
+
+
+def append_values(lines: list[str], values: dict[str, Any], prefix: str = "") -> None:
+    """Flatten nested metadata into bounded-width rows, never serialized JSON cells."""
+    for key, value in values.items():
+        label = prefix + title(key)
+        if isinstance(value, dict):
+            append_values(lines, value, label + " / ")
+        elif isinstance(value, list):
+            if not value:
+                lines.append(f"| {cell(label)} | None |")
+            elif all(not isinstance(v, dict | list) for v in value):
+                lines.append(f"| {cell(label)} | {cell(', '.join(map(scalar, value)))} |")
+            else:
+                for index, item in enumerate(value, 1):
+                    if isinstance(item, dict):
+                        append_values(lines, item, f"{label} {index} / ")
+                    else:
+                        lines.append(f"| {cell(label)} {index} | {cell(scalar(item))} |")
+        else:
+            lines.append(f"| {cell(label)} | {cell(scalar(value))} |")
+
+
+def utc(value: datetime | None) -> str:
+    return value.isoformat(sep=" ").removesuffix("+00:00") if value else "Not provided"
+
+
+def scope_label(scope: EvidenceScope) -> str:
+    if scope.id.startswith("fold."):
+        fold = scope.id.split(".")[1].replace("fold-", "Fold ")
+        return f"{scope.label} ({fold}, {scope.role.title()})"
+    if scope.role == "oos_summary":
+        return f"{scope.label} (OOS summary)"
+    if scope.role == "stitched_index":
+        return "Stitched OOS endpoint " + scope.id.rsplit(".", 1)[-1]
+    return f"{scope.label} ({scope.role.replace('_', ' ').title()})"
+
+
+def metric_tables(
+    lines: list[str],
+    scopes: list[EvidenceScope],
+    metrics: list[EvidenceMetric],
+    short: dict[str, str],
+) -> None:
+    groups = [
+        (
+            "Returns and benchmark",
+            [
+                "initial_balance",
+                "final_balance",
+                "net_pnl",
+                "total_return",
+                "net_buy_and_hold",
+                "excess_return",
+                "max_drawdown",
+            ],
+        ),
+        (
+            "Trades",
+            ["completed_trades", "winning_trades", "losing_trades", "win_rate", "profit_factor"],
+        ),
+        (
+            "Execution costs (quote currency)",
+            [
+                "fees",
+                "modeled_spread_cost",
+                "modeled_slippage_cost",
+                "benchmark_fees",
+                "benchmark_modeled_spread_cost",
+                "benchmark_modeled_slippage_cost",
+            ],
+        ),
+    ]
+    lookup = {(m.scope, m.name): m for m in metrics}
+    shown = {"fee_per_side", "full_spread", "slippage_per_side"}
+    for heading, names in groups:
+        present = [name for name in names if any((s.id, name) in lookup for s in scopes)]
+        if not present:
+            continue
+        lines.extend(
+            [
+                "",
+                f"#### {heading}",
+                "",
+                "| Segment | " + " | ".join(title(n) for n in present) + " |",
+                "| --- | " + " | ".join("---" for _ in present) + " |",
+            ]
+        )
+        for scope in scopes:
+            if not any((scope.id, n) in lookup for n in present):
+                continue
+            values = [
+                format_metric(lookup[scope.id, n]) if (scope.id, n) in lookup else "Not supplied"
+                for n in present
+            ]
+            lines.append(f"| {short[scope.id]} | " + " | ".join(values) + " |")
+        shown.update(present)
+    remaining = [m for m in metrics if m.scope in {s.id for s in scopes} and m.name not in shown]
+    if remaining:
+        lines.extend(
+            [
+                "",
+                "#### Aggregate and additional metrics",
+                "",
+                "| Segment | Metric | Value |",
+                "| --- | --- | --- |",
+            ]
+        )
+        for metric in remaining:
+            lines.append(
+                f"| {short[metric.scope]} | {title(metric.name)} | {format_metric(metric)} |"
+            )
 
 
 def markdown(report: ResearchReport) -> str:
     evidence = report.evidence
     source = evidence.source
+    short = {s.id: f"R{i}" for i, s in enumerate(evidence.scopes, 1)}
+    readable_labels = {s.id: scope_label(s) for s in evidence.scopes}
+
+    configured = evidence.configuration.get("strategies", [])
+    if isinstance(configured, list):
+        names = {
+            item["id"]: item["name"]
+            for item in configured
+            if isinstance(item, dict) and "id" in item and "name" in item
+        }
+        for scope in evidence.scopes:
+            if scope.role == "oos_summary":
+                readable_labels[scope.id] = str(names.get(scope.label, scope.label)) + " (OOS)"
+
+    def readable(text: str) -> str:
+        for identifier, label in readable_labels.items():
+            prefix = identifier + ": "
+            if text.startswith(prefix):
+                sentence = text[len(prefix) :]
+                if sentence.startswith("fewer than"):
+                    sentence = "there were " + sentence
+                return f"For {label}, {sentence}"
+        return text
+
+    def references(ids: list[str]) -> str:
+        scopes = {m.id: m.scope for m in evidence.metrics}
+        return ", ".join(dict.fromkeys(short[scopes[i]] for i in ids))
+
     titles = {
         "backtest": "Standard Backtest",
         "comparison": "Strategy Comparison",
@@ -51,15 +216,14 @@ def markdown(report: ResearchReport) -> str:
         "",
     ]
     priority = [o for o in report.observations if o.kind in ("oos", "grid", "costs")]
-    summary = (priority + [o for o in report.observations if o not in priority])[:8]
-    for item in summary:
-        lines.append(f"- {cell(item.text)} Evidence: {cell(', '.join(item.evidence_ids))}")
+    summary = (priority + [o for o in report.observations if o not in priority])[:6]
+    lines.extend("- " + cell(readable(o.text)) for o in summary)
     lines.extend(
         [
             "",
             (
-                "All observations describe supplied historical evidence; no "
-                "future performance or live position is recommended."
+                "All observations describe supplied historical evidence; no future "
+                "performance or live position is recommended."
             ),
             "",
             "## Research Configuration",
@@ -68,56 +232,74 @@ def markdown(report: ResearchReport) -> str:
             "| --- | --- |",
         ]
     )
-    for key, value in evidence.configuration.items():
-        lines.append(
-            f"| {cell(key)} | {cell(json.dumps(value, ensure_ascii=False, sort_keys=True))} |"
-        )
+    # Definitions and execution settings have their own readable sections.
+    config = {
+        k: v
+        for k, v in evidence.configuration.items()
+        if k not in ("strategies", "strategy", "base_strategy", "execution", "scenarios")
+    }
+    append_values(lines, config)
     lines.extend(
         [
             "",
             "## Strategies and Rules",
             "",
-            "| Scope | Label | Validated definition |",
-            "| --- | --- | --- |",
+            "| Definition | Used by | Entry | Exit |",
+            "| --- | --- | --- | --- |",
         ]
     )
+    definitions: dict[str, tuple[str, list[str], dict[str, Any]]] = {}
     for scope in evidence.scopes:
-        if scope.strategy is not None:
-            lines.append(
-                f"| {cell(scope.id)} | {cell(scope.label)} | "
-                f"{cell(json.dumps(scope.strategy, ensure_ascii=False, sort_keys=True))} |"
-            )
+        if scope.strategy is None:
+            continue
+        key = json.dumps(scope.strategy, sort_keys=True)
+        if key not in definitions:
+            definitions[key] = (f"S{len(definitions) + 1}", [], scope.strategy)
+        labels = definitions[key][1]
+        if scope.label not in labels:
+            labels.append(scope.label)
+    for identifier, labels, definition in definitions.values():
+        rule = RuleStrategy.model_validate(definition)
+        lines.append(
+            f"| {identifier} | {cell(', '.join(labels))} | "
+            f"{cell(format_rule(rule.entry))} | {cell(format_rule(rule.exit))} |"
+        )
     lines.extend(
         [
             "",
             "## Historical Data and Evaluation Period",
             "",
             f"- Source: {cell(source.data_source or 'Unavailable')}",
-            f"- Evaluation: {cell(source.evaluation_start)} to {cell(source.evaluation_end)}",
+            f"- Evaluation (UTC): {utc(source.evaluation_start)} to {utc(source.evaluation_end)}",
             f"- Boundary interpretation: {cell(source.evaluation_boundary_policy)}",
             "",
             "## Execution Assumptions",
             "",
             (
-                "Fee is a per-side fraction; spread is the full bid/ask spread "
-                "in bps; slippage is adverse per side in bps."
+                "Fee is a per-side fraction; spread is the full bid/ask spread in bps; "
+                "slippage is adverse per side in bps."
             ),
             (
-                "OHLC prices are reference proxies. Reported spread/slippage "
-                "costs are illustrative adjustments, not measured fills."
+                "OHLC prices are reference proxies. Reported spread/slippage costs are "
+                "illustrative adjustments, not measured fills."
             ),
+            "Signals execute at the following candle open; forced liquidation "
+            "uses the segment's final close.",
             "",
-            "| Scope | Fee per side | Full spread | Slippage per side |",
+            "| Applies to | Fee per side | Full spread | Slippage per side |",
             "| --- | --- | --- | --- |",
         ]
     )
+    executions: dict[tuple[float, float, float], list[str]] = {}
     for scope in evidence.scopes:
-        if scope.execution is not None and scope.role != "oos_summary":
-            execution = scope.execution
-            lines.append(
-                f"| {cell(scope.id)} | {execution.fee_rate:g} fraction | "
-                f"{execution.spread_bps:g} bps | {execution.slippage_bps:g} bps |"
+        if scope.execution is not None:
+            ex = scope.execution
+            executions.setdefault((ex.fee_rate, ex.spread_bps, ex.slippage_bps), []).append(
+                short[scope.id]
             )
+    for (fee, spread, slip), refs in executions.items():
+        applies = "All segments" if len(executions) == 1 else ", ".join(refs)
+        lines.append(f"| {applies} | {fee:g} fraction | {spread:g} bps | {slip:g} bps |")
     lines.extend(
         [
             "",
@@ -125,54 +307,38 @@ def markdown(report: ResearchReport) -> str:
             "",
             (
                 "Numbers are rounded for display; JSON evidence retains source "
-                "precision. All scopes and negative results are shown."
+                "precision, full identifiers, source paths and contexts. All segments, "
+                "negative results and undefined metrics are shown. R references "
+                "identify rows below; boundaries are UTC and use the source boundary "
+                "policy."
             ),
-            "",
-            "| Scope | Role | Start UTC | End UTC |",
-            "| --- | --- | --- | --- |",
         ]
     )
+    grouped: dict[str, list[EvidenceScope]] = OrderedDict()
     for scope in evidence.scopes:
-        lines.append(
-            f"| {cell(scope.id)} | {scope.role} | {cell(scope.start)} | {cell(scope.end)} |"
-        )
-    groups: list[tuple[str, Callable[[EvidenceMetric], bool]]] = [
-        (
-            "Financial Metrics",
-            lambda m: m.name
-            not in (
-                "net_buy_and_hold",
-                "excess_return",
-                "max_drawdown",
-                "median_test_max_drawdown_percent",
-            )
-            and "benchmark_" not in m.name,
-        ),
-        (
-            "Benchmark Comparison",
-            lambda m: m.name in ("net_buy_and_hold", "excess_return") or "benchmark_" in m.name,
-        ),
-        (
-            "Drawdown and Risk Observations",
-            lambda m: m.name in ("max_drawdown", "median_test_max_drawdown_percent"),
-        ),
-    ]
-    for title, predicate in groups:
+        if scope.id.startswith("fold."):
+            group = scope.id.split(".strategy.")[1].rsplit(".", 1)[0]
+        elif scope.id.startswith("summary.strategy."):
+            group = scope.id.split("summary.strategy.")[1].split(".")[0]
+        else:
+            group = "Research results"
+        grouped.setdefault(group, []).append(scope)
+    for group, scopes in grouped.items():
         lines.extend(
             [
                 "",
-                f"## {title}",
+                f"### {cell(scopes[0].label if group != 'Research results' else group)}",
                 "",
-                "| Evidence ID | Value / unit | Source path | Context |",
+                "| Reference | Segment | Start UTC | End UTC |",
                 "| --- | --- | --- | --- |",
             ]
         )
-        for entry_metric in evidence.metrics:
-            if predicate(entry_metric):
-                lines.append(
-                    f"| {cell(entry_metric.id)} | {format_metric(entry_metric)} | "
-                    f"{cell(entry_metric.source_path)} | {cell(entry_metric.context)} |"
-                )
+        for scope in scopes:
+            lines.append(
+                f"| {short[scope.id]} | {cell(readable_labels[scope.id])} | "
+                f"{utc(scope.start)} | {utc(scope.end)} |"
+            )
+        metric_tables(lines, scopes, evidence.metrics, short)
     if source.research_type in ("validation", "walk_forward"):
         lines.extend(
             [
@@ -190,7 +356,7 @@ def markdown(report: ResearchReport) -> str:
         lines.append(
             "Test aggregates summarize independent folds. Median fold "
             "drawdown is not continuous portfolio drawdown. Stitched OOS, if "
-            "supplied, is a fold-endpoint index with no carried positions."
+            "supplied, is a fold-endpoint index: not continuous execution with carried positions."
         )
     if source.research_type in ("sensitivity", "costs"):
         lines.extend(
@@ -209,11 +375,6 @@ def markdown(report: ResearchReport) -> str:
                     "establish independent OOS validation."
                 ),
             ]
-        )
-    lines.extend(["", "## Deterministic Observations", ""])
-    for item in report.observations:
-        lines.append(
-            f"- {cell(item.id)}: {cell(item.text)} Evidence: {cell(', '.join(item.evidence_ids))}"
         )
     if report.ai_interpretation is not None:
         from strategy_backtest_agent.reports.ai import QUESTIONS
@@ -234,9 +395,9 @@ def markdown(report: ResearchReport) -> str:
             lines.extend(
                 [
                     "",
-                    cell(indexed[statement.observation_id].text),
+                    cell(readable(indexed[statement.observation_id].text)),
                     cell(statement.text),
-                    "Evidence: " + cell(", ".join(statement.evidence_ids)),
+                    "References: " + references(statement.evidence_ids),
                 ]
             )
         if report.ai_interpretation.research_questions:
@@ -281,10 +442,7 @@ def markdown(report: ResearchReport) -> str:
             "| --- | --- |",
         ]
     )
-    for key, value in evidence.reproducibility_metadata.items():
-        lines.append(
-            f"| {cell(key)} | {cell(json.dumps(value, ensure_ascii=False, sort_keys=True))} |"
-        )
+    append_values(lines, evidence.reproducibility_metadata)
     if report.ai_metadata:
         lines.append(
             f"- AI requested model: {cell(report.ai_metadata.requested_model)}; "
