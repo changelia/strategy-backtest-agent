@@ -390,12 +390,37 @@ availability depends on history, network access, rate limits, and regional restr
 Legacy/direct candle runs can span missing intervals; the rule-history fetch rejects gaps.
 The application does not place orders or connect to private trading endpoints.
 
-## Roadmap: Strategy Research Agent
+## Evidence-grounded research reports
 
-Strategy comparison, chronological validation, parameter sensitivity and fixed-strategy
-walk-forward analysis are implemented. Planned next research capabilities:
+Generate a report from one existing v0.9 CLI JSON result without fetching prices
+or rerunning a backtest. Supported inputs: standard backtest (including the AI
+wrapper), comparison, validation, sensitivity, cost scenarios and walk-forward.
 
-- **Research reports:** summarize configurations, evidence, risks, and limitations in reproducible reports.
+```bash
+poetry run strategy-backtest report --input examples/report-source.json --format markdown
+poetry run strategy-backtest report --input examples/report-source.json --format json
+poetry run strategy-backtest report --input examples/report-source.json --format markdown --output reports/research.md
+poetry run strategy-backtest report --input examples/report-source.json --ai --format markdown
+```
+
+Deterministic mode needs no API key. See the [synthetic example report](examples/research-report.md).
+Output files must be new; existing files are never overwritten. JSON stdout is one
+object. Exit 0 means a deterministic report was generated, including when optional
+AI is unavailable or rejected; its status and stderr explain the fallback. Invalid
+input or filesystem errors exit 2.
+
+Optional AI uses the existing OpenAI configuration to select evidence-linked,
+preapproved explanatory statements and research questions. It cannot supply new
+financial prose or change metrics. This deliberately conservative mode does not
+prove arbitrary language true. Interpretation status and model are recorded.
+
+Identical input bytes and generator version produce identical deterministic
+content, with no generated timestamp. Source/canonical-input/evidence hashes aid
+reproducibility, but cannot authenticate market data or supplied results. Inputs
+are bounded and validated; Markdown metadata is escaped. Safe output creation
+requires POSIX filesystem support and rejects symlink directories and parent
+traversal. Reports preserve Train/Test distinctions and historical limitations;
+positive returns do not establish predictive value.
 
 ## Development
 

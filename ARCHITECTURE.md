@@ -1165,3 +1165,86 @@ boundary. It computes no series/trades, generates no executable code and selects
 no strategy. ATR volatility thresholds are absolute quote-price units. No stops,
 position sizing by ATR, leverage, shorts, live orders, statistical robustness
 claims or predictions are added.
+
+
+## Evidence-grounded reports (v1.0 feature)
+
+`report --input` reads one existing JSON result. It never calls a data provider or
+backtester. `reports/inputs.py` bounds decoding and chooses an explicit
+`sba-v0.9-<type>/1` adapter. Supported unversioned inputs are the complete v0.9
+standard CLI result, AI CLI wrapper, ComparisonResult, ValidationReport,
+SensitivityReport, CostScenarioReport and WalkForwardReport. Missing source
+schema versions remain null; other versions and ambiguous shapes reject rather
+than guessing. Full native models and required fields are validated before
+`reports/validation.py` checks accounting, execution assumptions, segment bounds,
+identities/order, dependency and initialization metadata, and summary consistency.
+Existing execution, ranking, sensitivity and OOS summary helpers are reused only
+for consistency checks. No indicator or trade is recomputed by report generation.
+These checks cannot verify supplied signal accuracy, actual market prices,
+intrabar behavior or an equity path absent from the source. A candle digest is
+unverified provenance, not proof of truthful financial results.
+
+`reports/evidence.py` extracts typed metrics with stable scope IDs, JSON source
+paths, units and methodological context. Financial values are copied, with
+explicit final-minus-initial net PnL where needed. Existing calculations are not
+replaced. Source strategy order and complete Train/Test/fold/scenario metrics are
+preserved. Deterministic observations use explicit sign, count and comparison
+rules; undefined metrics remain null. Sensitivity and cost scenarios are labeled
+Train-only. Walk-forward Test summaries remain distinct from Train diagnostics;
+stitched endpoints are an index compounded from independent Test returns, never
+a position-carrying portfolio or pooled drawdown. Benchmark policy must be the
+supported net policy; unknown/gross policies are rejected instead of relabeled.
+
+`reports/render.py` renders applicable Markdown sections or the strict JSON
+ResearchReport. Percent and percentage-point units are separate; monetary costs
+use quote currency. Display rounding does not change evidence precision. No wall
+clock timestamp is introduced. Original-byte SHA256, canonical-input SHA256 and
+canonical-evidence SHA256 serve different purposes: whitespace changes the first
+and provenance-containing evidence, while canonical input hashing ignores JSON
+key order/whitespace. Canonical JSON sorts keys and disallows nonfinite numbers.
+Input dates normalize to UTC. Generator and adapter versions are recorded;
+changes to report semantics require a generator-version change.
+
+### Optional interpretation and trust boundaries
+
+`reports/ai.py` sends only selected deterministic observations and their referenced
+metrics to the existing OpenAI structured-output SDK. It excludes raw candles,
+trades, prompts, strategy names and source notes. Requests use store=false, no
+tools, bounded output and the existing timeout/retry policy. The AI selects from
+approved explanation and research-question codes, returning exact approved text.
+Validation requires compatible observation kinds, exact known evidence IDs,
+separately matched numeric values/units and no duplicated statements. Unknown
+references, free prose, numerical inventions, advice and forecasts reject the
+interpretation. This constraint intentionally limits expressiveness; checking
+IDs alone cannot prove unrestricted natural-language claims. Even accepted
+selection is not a financial or statistical inference engine.
+
+Missing credentials/provider failures yield `ai_unavailable`; invalid structured
+output or failed grounding yields `ai_rejected`. Both preserve the complete
+deterministic evidence and report, emit a sanitized warning and exit 0. Accepted
+AI is separately labeled with requested/response model metadata; its selection
+is not guaranteed byte reproducible. Raw provider exceptions/headers are never
+printed. Invalid source or filesystem errors exit 2, without a report object.
+
+Inputs are untrusted: maximum 16 MiB, depth 32, 250,000 nodes and 8,192 characters
+per string; duplicate keys, nonfinite numbers and unsupported controls reject.
+Only regular files are read, nonblocking to avoid FIFO hangs. No eval or generated
+code runs. User strings are escaped as Markdown data (including HTML/link/table
+syntax); source warnings are explicitly unverified notes, not generated findings.
+POSIX output uses descriptor-relative, no-follow directory traversal and an
+exclusive temporary file, fsync and atomic no-overwrite hard link. Parent
+traversal, symlink directories and existing destinations reject. Input files are
+never overwritten. Multi-file aggregation, PDF/HTML, charts, source authenticity
+verification and unrestricted AI narratives remain outside this feature.
+
+### Offline example
+
+`examples/report_fixture.py` explicitly creates fixed synthetic native research
+JSON (not historical BTCUSDT); it is separate from the reporting pipeline.
+`examples/report-source.json` and `examples/research-report.md` are checked in,
+and a regression regenerates both byte-for-byte. To generate a new report:
+
+```bash
+poetry run strategy-backtest report --input examples/report-source.json --format markdown
+poetry run strategy-backtest report --input examples/report-source.json --format json
+```
