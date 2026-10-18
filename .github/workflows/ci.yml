@@ -17,3 +17,30 @@ jobs:
       - run: poetry run ruff format --check .
       - run: poetry run mypy
       - run: poetry run pytest
+  packaging:
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install packaging tools
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/packaging-tools"
+          "$RUNNER_TEMP/packaging-tools/bin/python" -m pip install build twine packaging
+      - name: Build, validate and smoke-test wheel and sdist
+        run: |
+          set -euo pipefail
+          packaging_work="$(mktemp -d "$RUNNER_TEMP/sba-packaging.XXXXXX")"
+          "$RUNNER_TEMP/packaging-tools/bin/python" tests/packaging_ci.py \
+            --checkout "$GITHUB_WORKSPACE" --work "$packaging_work"
