@@ -8,18 +8,26 @@ interpretation call OpenAI and may incur charges.
 
 ## Installation and client configuration
 
-Python 3.12 or newer is required. The documented/tested platform is POSIX. In a source
-checkout, install with `poetry install`; the package is not yet confirmed published to
-PyPI. The installed distribution will be available as `strategy-backtest-agent` after
-publication.
+The released v1.1.0 CLI is installed with pip:
 
-```python
-from strategy_backtest_agent import BacktestClient
-
-client = BacktestClient()
-offline_client = BacktestClient(api_key=None)
-ai_client = BacktestClient(api_key="<your OpenAI API key>", model="gpt-4.1-mini")
+```bash
+python -m pip install strategy-backtest-agent==1.1.0
 ```
+
+That release does not include the `BacktestClient` API described here. The API is an
+unreleased preview on `feat/public-python-api`. To install the preview from source,
+use Python 3.12 or newer, Poetry, and the documented POSIX platform:
+
+```bash
+git clone --branch feat/public-python-api https://github.com/changelia/strategy-backtest-agent.git
+cd strategy-backtest-agent
+poetry install
+poetry run python -c 'from strategy_backtest_agent import BacktestClient; print(BacktestClient())'
+```
+
+`BacktestClient()` uses the preview source environment. To configure an AI-enabled
+client explicitly, supply `api_key="<your OpenAI API key>"` and optionally
+`model="gpt-4.1-mini"`. No real credentials belong in examples or source control.
 
 For each setting, precedence is explicit client value, environment (`OPENAI_API_KEY`
 or `OPENAI_MODEL`), explicitly selected dotenv file, then the model default
@@ -27,6 +35,9 @@ or `OPENAI_MODEL`), explicitly selected dotenv file, then the model default
 modifying `os.environ`. The CLI's automatic `.env` loading does not apply to Python
 clients. Explicit empty settings remain empty. Never commit real keys. Neither a key's
 presence nor a model name establishes provider validity or availability.
+`api_key=None` means “unspecified” and therefore allows environment or dotenv fallback;
+it does not disable AI configuration. A plain `BacktestClient()` still performs no AI
+request unless parsing or `ai=True` interpretation is explicitly requested.
 
 ## Structured offline backtest
 
@@ -234,15 +245,19 @@ The Python client is optional; the installed CLI supports the same research engi
 Config mode and the demo require no OpenAI credentials or network access:
 
 ```bash
+mkdir research-run
+cd research-run
 strategy-backtest init --type backtest --output config.json
-strategy-backtest --config config.json --days 3 --demo --json
+set -C
+strategy-backtest --config config.json --days 3 --demo --json > result.json
 strategy-backtest report --input result.json --format markdown --output report.md
 strategy-backtest doctor
 ```
 
 Without `--demo`, research fetches Binance history. `strategy-backtest ai "..."`
 uses OpenAI to parse a natural-language strategy and may incur charges. In a Poetry
-checkout, prefix commands with `poetry run`.
+checkout, prefix commands with `poetry run`. This CLI example describes the released
+v1.1.0 command line; the API preview is separately installed from its feature branch.
 
 ## Supported rules, execution, and limitations
 

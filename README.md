@@ -1,30 +1,33 @@
 # Strategy Backtest Agent
 
-Strategy Backtest Agent is a Python research tool for reproducible historical strategy
-backtests. It supports a Python client and command-line workflows for backtests,
-strategy comparison, chronological validation, parameter sensitivity, execution-cost
-scenarios, and Walk-Forward Analysis. It does not place orders or predict future
-returns.
+Released v1.1.0 provides the command-line research workflows for backtests, strategy
+comparison, chronological validation, parameter sensitivity, execution-cost scenarios,
+and Walk-Forward Analysis. The `BacktestClient` shown below is an unreleased preview on
+the `feat/public-python-api` branch. The project performs historical research; it does
+not place orders or predict future returns.
 
 ## Installation
 
-Python 3.12 or newer and Poetry are required for the source installation below. The
-documented and CI-tested installation platform is POSIX; safe report and template file
-creation relies on POSIX filesystem operations.
-The project is not yet confirmed as published on PyPI. After publication, the intended
-install command will be `python -m pip install strategy-backtest-agent`.
-
-For a working source installation, clone the repository and install its locked
-dependencies with Poetry:
+**Released CLI (v1.1.0):** install the current release with pip:
 
 ```bash
-git clone https://github.com/changelia/strategy-backtest-agent.git
+python -m pip install strategy-backtest-agent==1.1.0
+```
+
+The unreleased `BacktestClient` API on `feat/public-python-api` is not included in
+that distribution. To preview the API, use Python 3.12+ and Poetry with the feature
+branch source:
+
+```bash
+git clone --branch feat/public-python-api https://github.com/changelia/strategy-backtest-agent.git
 cd strategy-backtest-agent
 poetry install
 ```
 
-`poetry run strategy-backtest ...` uses the development environment. A normal pip
-installation runs the installed `strategy-backtest` command without Poetry.
+The documented and CI-tested platform is POSIX; safe report and template file creation
+uses POSIX filesystem operations. `poetry run strategy-backtest ...` uses the source
+checkout's development environment; the released pip installation provides the
+v1.1.0 CLI.
 
 ## Offline Python quick start
 
@@ -47,9 +50,11 @@ json_report = client.report(result, format="json")
 
 The result is typed and retains the fields for its research mode. `summary()` is a
 human-readable view; `model_dump()` and `model_dump_json()` serialize the underlying
-result. Reports are generated directly from the in-memory result without rerunning
-research or fetching candles. Deterministic reports need no AI credentials. See the
-[Python API reference](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/PYTHON_API.md)
+result. This API example requires the feature-branch preview above; it is not available
+from the released v1.1.0 pip package. Reports are generated directly from the in-memory
+result without rerunning research or fetching candles. Deterministic reports need no AI
+credentials. See the
+[Python API reference](https://github.com/changelia/strategy-backtest-agent/blob/feat/public-python-api/docs/PYTHON_API.md)
 for complete examples of all six modes, async calls, and safe report saving.
 
 ## AI and market-data access
