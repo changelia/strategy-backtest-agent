@@ -148,6 +148,11 @@ async def _run(
 
 def main() -> None:
     """Load local settings once, then dispatch the requested CLI command."""
+    if sys.argv[1:2] == ["doctor"]:
+        from strategy_backtest_agent.doctor import main as doctor_main
+
+        doctor_main(sys.argv[2:])
+        return
     load_dotenv(dotenv_path=find_dotenv(usecwd=True), override=False)
     if sys.argv[1:2] == ["init"]:
         from strategy_backtest_agent.init_cli import main as init_main
@@ -190,7 +195,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Backtest a long-only RSI strategy",
         epilog=(
-            "Templates: strategy-backtest init --help. "
+            "Templates: strategy-backtest init --help. Diagnostics: strategy-backtest doctor. "
             'Natural language: strategy-backtest ai "Backtest BTCUSDT" [--json]'
         ),
     )

@@ -473,6 +473,31 @@ research configs must use that end or null. For real Binance history omit `--dem
 and choose an appropriate evaluation period; that requires network access.
 Safe file publication requires POSIX directory operations, as report output does.
 
+## Offline diagnostics
+
+```bash
+strategy-backtest doctor
+strategy-backtest doctor --type compare --config comparison-config.json
+```
+
+In a Poetry checkout, prefix with `poetry run`. Config validation is optional and
+requires both `--type` (the same four choices as `init`) and `--config`; no research
+files are scanned or guessed. Doctor reports Python compatibility, installed and
+checkout metadata separately, dotenv discovery/loading, key presence and optional
+AI model state. Stale editable metadata is labeled rather than used as the source
+version. It uses normal shell-over-dotenv precedence, including empty shell values,
+and honors `PYTHON_DOTENV_DISABLED`. Key values and model overrides are never shown.
+
+Exit **0** means the checked offline capabilities are available; missing `.env`,
+missing/empty credentials or unavailable optional AI do not cause failure. Exit
+**1** means a Python compatibility, dotenv parsing/loading, explicit configuration
+or offline self-check error needs attention. Exit **2** means invalid arguments.
+Diagnostics are read-only: the offline check imports code and generates a small
+synthetic sample, without running research, checking market connectivity or making
+requests. A key's presence does not prove validity, funding or authorization; a
+model setting does not prove provider availability. Validation confirms only the
+selected configuration schema, not data availability, execution or profitability.
+
 ## Development
 
 ```bash

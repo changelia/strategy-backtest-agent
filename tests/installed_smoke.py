@@ -142,6 +142,13 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
             ("report-help", ["report", "--help"]),
         ):
             (work / f"{name}.txt").write_bytes(run([str(cli), *args]).stdout)
+        doctor_result = run([str(cli), "doctor"])
+        assert b"Offline checks: available" in doctor_result.stdout
+        assert b"OpenAI key: absent or empty" in doctor_result.stdout
+        assert b"Dotenv: disabled" in doctor_result.stdout
+        assert b"Installed package version: 1.0.0" in doctor_result.stdout
+        assert not doctor_result.stderr
+        (work / "doctor.txt").write_bytes(doctor_result.stdout)
         content = run([str(cli), "--demo", "--json"]).stdout
         (work / "demo.json").write_bytes(content)
         check_demo(json.loads(content))
@@ -193,12 +200,22 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
         assert bad.returncode == 2 and not bad.stdout
         assert b"Error:" in bad.stderr and b"Traceback" not in bad.stderr
         assert b"DO_NOT_ECHO_SYNTHETIC" not in bad.stderr
+        doctor_bad = run(
+            [str(cli), "doctor", "--type", "backtest", "--config", str(work / "malformed.json")],
+            success=False,
+        )
+        assert doctor_bad.returncode == 1
+        assert b"ERROR research config invalid/unreadable" in doctor_bad.stdout
+        assert b"DO_NOT_ECHO_SYNTHETIC" not in doctor_bad.stdout + doctor_bad.stderr
         init_templates = {}
         for kind in ("backtest", "compare", "validate", "walk-forward"):
             config = work / f"init-{kind}.json"
             args = [str(cli), "init", "--type", kind, "--output", str(config)]
             run(args)
             original = config.read_bytes()
+            if kind == "backtest":
+                doctor_config = run([str(cli), "doctor", "--type", kind, "--config", str(config)])
+                assert b"Research config: valid backtest model" in doctor_config.stdout
             duplicate = run(args, success=False)
             assert duplicate.returncode == 2 and b"Error:" in duplicate.stderr
             assert config.read_bytes() == original
@@ -228,6 +245,10 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
             "negative_error": bad.stderr.decode().strip(),
             "network_attempts": 0,
             "init_templates": init_templates,
+            "doctor": {
+                "exit": doctor_result.returncode,
+                "invalid_config_exit": doctor_bad.returncode,
+            },
         }
     finally:
         guard.unlink()  # Only this helper's own temporary instrumentation.
