@@ -12,6 +12,7 @@ import math
 import os
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -63,15 +64,21 @@ def check_source_metrics(report: dict[str, Any], source: dict[str, Any]) -> None
         assert metric["value"] == value, metric["id"]
 
 
+def project_version(checkout: Path) -> str:
+    config = tomllib.loads((checkout / "pyproject.toml").read_text(encoding="utf-8"))
+    return str(config["project"]["version"])
+
+
 PROBE = r"""
 import importlib.metadata as m, json, pathlib, site, sys
 import strategy_backtest_agent
 root = pathlib.Path(sys.prefix).resolve()
 checkout = pathlib.Path(sys.argv[1]).resolve()
+expected_version = sys.argv[2]
 dist = m.distribution('strategy-backtest-agent')
 origin = pathlib.Path(strategy_backtest_agent.__file__).resolve()
 assert root in origin.parents and 'site-packages' in origin.parts
-assert dist.version == '1.0.0'
+assert dist.version == expected_version
 assert dist.metadata['Name'] == 'strategy-backtest-agent'
 assert site.ENABLE_USER_SITE is False
 assert 'include-system-site-packages = false' in (root/'pyvenv.cfg').read_text()
@@ -120,7 +127,8 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
             assert result.returncode == 0, result.stderr.decode()
         return result
 
-    probe = json.loads(run([str(python), "-I", "-c", PROBE, str(checkout)]).stdout)
+    version = project_version(checkout)
+    probe = json.loads(run([str(python), "-I", "-c", PROBE, str(checkout), version]).stdout)
     pip_check = run([str(python), "-m", "pip", "check"]).stdout.decode().strip()
     versions = json.loads(run([str(python), "-m", "pip", "list", "--format=json"]).stdout)
     pip_version = run([str(python), "-m", "pip", "--version"]).stdout.decode().strip()
@@ -146,7 +154,7 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
         assert b"Offline checks: available" in doctor_result.stdout
         assert b"OpenAI key: absent or empty" in doctor_result.stdout
         assert b"Dotenv: disabled" in doctor_result.stdout
-        assert b"Installed package version: 1.0.0" in doctor_result.stdout
+        assert f"Installed package version: {version}".encode() in doctor_result.stdout
         assert not doctor_result.stderr
         (work / "doctor.txt").write_bytes(doctor_result.stdout)
         content = run([str(cli), "--demo", "--json"]).stdout

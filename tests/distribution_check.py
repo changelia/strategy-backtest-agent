@@ -22,8 +22,11 @@ from packaging.specifiers import SpecifierSet
 from packaging.utils import canonicalize_name
 
 PACKAGE = "strategy_backtest_agent"
-DIST = "strategy_backtest_agent-1.0.0.dist-info"
-ROOT = "strategy_backtest_agent-1.0.0"
+PROJECT_VERSION = tomllib.loads(
+    (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
+)["project"]["version"]
+DIST = f"strategy_backtest_agent-{PROJECT_VERSION}.dist-info"
+ROOT = f"strategy_backtest_agent-{PROJECT_VERSION}"
 BLOCKED = {
     ".git",
     ".github",
@@ -206,7 +209,7 @@ def validate(path: Path, project: Path) -> dict[str, Any]:
     ):
         require(len(metadata.get_all(header, [])) == 1, "missing/duplicate metadata header")
     require(canonicalize_name(str(metadata["Name"])) == "strategy-backtest-agent", "incorrect name")
-    require(metadata["Version"] == "1.0.0", "incorrect version")
+    require(metadata["Version"] == PROJECT_VERSION, "incorrect version")
     require(
         SpecifierSet(str(metadata["Requires-Python"])) == SpecifierSet(">=3.12,<4.0"),
         "incorrect Python requirement",
@@ -239,7 +242,10 @@ def validate(path: Path, project: Path) -> dict[str, Any]:
         "incorrect runtime dependencies (including unexpected development tools)",
     )
     config = tomllib.loads((project / "pyproject.toml").read_text())
-    require(config["project"]["version"] == "1.0.0", "validator targets version 1.0.0")
+    require(
+        config["project"]["version"] == PROJECT_VERSION,
+        "artifact version does not match the inspected project version",
+    )
     return {
         "artifact": str(path),
         "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),

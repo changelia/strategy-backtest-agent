@@ -6,7 +6,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
-from distribution_check import DIST, ROOT, read_archive, validate
+from distribution_check import DIST, PROJECT_VERSION, ROOT, read_archive, validate
 
 REQUIREMENTS = [
     "pandas (>=2.2,<3.0)",
@@ -24,7 +24,7 @@ def project(tmp_path: Path) -> Path:
         "README.md": "# Example\n\nOffline research — not a prediction.\n",
         "LICENSE": "MIT fixture legal text\n",
         ".env.example": "OPENAI_API_KEY=your_openai_api_key_here\n",
-        "pyproject.toml": '[project]\nversion = "1.0.0"\n',
+        "pyproject.toml": f'[project]\nversion = "{PROJECT_VERSION}"\n',
         "src/strategy_backtest_agent/__init__.py": '"""Example package."""\n',
         "src/strategy_backtest_agent/cli.py": "def main():\n    pass\n",
         "src/strategy_backtest_agent/resources/example.json": '{"example": true}\n',
@@ -41,7 +41,7 @@ def contents(project: Path, wheel: bool) -> dict[str, bytes]:
             name = path.relative_to(project / "src" if wheel else project).as_posix()
             result[name] = path.read_bytes()
     metadata = (
-        "Metadata-Version: 2.4\nName: strategy-backtest-agent\nVersion: 1.0.0\n"
+        f"Metadata-Version: 2.4\nName: strategy-backtest-agent\nVersion: {PROJECT_VERSION}\n"
         "Requires-Python: >=3.12,<4.0\nLicense: MIT\nLicense-File: LICENSE\n"
         "Description-Content-Type: text/markdown\n"
         + "".join(f"Requires-Dist: {r}\n" for r in REQUIREMENTS)
@@ -90,7 +90,7 @@ def test_valid_archive_keeps_resources_and_has_source_matched_metadata(
         "resources/example.json",
         "resources/notes.md",
     }
-    assert result["metadata"]["Version"] == ["1.0.0"]
+    assert result["metadata"]["Version"] == [PROJECT_VERSION]
     assert len(result["sha256"]) == 64
 
 
@@ -147,7 +147,7 @@ def test_prohibited_and_unrelated_archive_contents_rejected(
     [
         ("Name: strategy-backtest-agent", "Name: other-name"),
         ("Name: strategy-backtest-agent", "Name: strategy-backtest-agent\nName: unexpected"),
-        ("Version: 1.0.0", "Version: 9.9.9"),
+        (f"Version: {PROJECT_VERSION}", "Version: 9.9.9"),
         ("Requires-Python: >=3.12,<4.0", "Requires-Python: >=3.8"),
         ("Description-Content-Type: text/markdown", "Description-Content-Type: text/plain"),
         ("License: MIT", "License: different"),

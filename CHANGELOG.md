@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.1.0 — Release candidate (unreleased)
+
+### Added
+
+- CLI `init` templates for backtest, comparison, chronological validation and
+  walk-forward research; offline `doctor` diagnostics; and the Quick Start tutorial.
+- Automated distribution build, strict metadata/archive validation, isolated
+  installation and offline CLI/report checks in GitHub Actions.
+- A separately gated, opt-in PyPI Trusted Publishing workflow. The candidate
+  requires owner-configured GitHub environment protection and PyPI OIDC publisher
+  settings before publication. No upload is performed while preparing this candidate.
+
+### Release candidate scope
+
+- Package metadata is set to `1.1.0`; this version is not yet published or tagged.
+- No backtesting calculations, report schema versions, or runtime dependencies changed.
+- The PyPI namespace was observed without public project metadata at the audit time;
+  this does not guarantee name availability or account ownership.
+
 ## v1.0.0 — Evidence-Grounded AI Research Reports
 
 ### Added

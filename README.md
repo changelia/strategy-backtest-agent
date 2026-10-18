@@ -6,8 +6,10 @@ Strategy Backtest Agent evaluates single-symbol, long-only strategy rules. Pytho
 calculates indicators, signals, trades, execution costs and metrics. Optional OpenAI
 features parse natural-language strategies and explain validated research evidence.
 
-Current release: **v1.0.0 — Evidence-Grounded AI Research Reports**.
-Release tag and package version: **v1.0.0**. See [CHANGELOG.md](CHANGELOG.md).
+Latest tagged release: **v1.0.0 — Evidence-Grounded AI Research Reports**.
+The repository includes an unreleased **v1.1.0 release candidate**. It is not
+published or tagged. See [CHANGELOG.md](CHANGELOG.md) and the [release candidate
+procedure](RELEASE.md).
 
 ## Quick Start
 
