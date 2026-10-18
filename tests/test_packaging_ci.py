@@ -20,6 +20,12 @@ def receipt() -> dict[str, Any]:
         "demo": {"final_balance": 123.09},
         "evidence_sha256": "evidence-hash",
         "init_templates": {"backtest": {"result_sha256": "result-hash"}},
+        "public_api": {
+            "evidence_sha256": "api-evidence-hash",
+            "input_content_sha256": "api-input-hash",
+            "markdown_sha256": "api-markdown-hash",
+            "final_balance": 123.09,
+        },
     }
 
 
@@ -38,6 +44,7 @@ def test_matching_installed_results_pass(receipt: dict[str, Any]) -> None:
         "different_json",
         "different_evidence",
         "different_init",
+        "different_public_api",
     ],
 )
 def test_failed_or_different_installed_results_fail_ci(
@@ -58,6 +65,8 @@ def test_failed_or_different_installed_results_fail_ci(
         other["report_sha256"]["json"] = "changed"
     elif failure == "different_init":
         other["init_templates"]["backtest"]["result_sha256"] = "changed"
+    elif failure == "different_public_api":
+        other["public_api"]["evidence_sha256"] = "changed"
     else:
         other["evidence_sha256"] = "changed"
     with pytest.raises(ValueError):

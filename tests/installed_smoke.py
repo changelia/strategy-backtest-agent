@@ -110,6 +110,33 @@ def _deny_network(event, args):
 sys.addaudithook(_deny_network)
 """
 
+PUBLIC_API_PROBE = r"""
+import hashlib, json
+from strategy_backtest_agent import BacktestClient
+client = BacktestClient()
+config = client.template('backtest')
+result = client.run(config=config, days=3, demo=True)
+json_report = client.report(result, format='json')
+markdown = client.report(result, format='markdown')
+repeat = client.report(result, format='json')
+assert json_report == repeat
+report = json.loads(json_report)
+assert report['evidence']['source']['research_type'] == 'backtest'
+assert report['evidence']['source']['input_content_sha256']
+assert report['evidence_sha256']
+assert markdown and markdown.startswith('# Historical Strategy Research Report')
+diagnostics = client.doctor()
+assert diagnostics.offline_ready and not diagnostics.api_key_present
+print(json.dumps({
+  'result': result.model_dump(mode='json'),
+  'evidence_sha256': report['evidence_sha256'],
+  'input_content_sha256': report['evidence']['source']['input_content_sha256'],
+  'markdown_sha256': hashlib.sha256(markdown.encode()).hexdigest(),
+  'api_key_present': diagnostics.api_key_present,
+  'offline_ready': diagnostics.offline_ready,
+}))
+"""
+
 
 def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
     venv, work, checkout = venv.resolve(), work.resolve(), checkout.resolve()
@@ -215,6 +242,9 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
         assert doctor_bad.returncode == 1
         assert b"ERROR research config invalid/unreadable" in doctor_bad.stdout
         assert b"DO_NOT_ECHO_SYNTHETIC" not in doctor_bad.stdout + doctor_bad.stderr
+        api_receipt = json.loads(run([str(python), "-I", "-c", PUBLIC_API_PROBE]).stdout)
+        assert api_receipt["offline_ready"] and not api_receipt["api_key_present"]
+        (work / "public-api.json").write_text(json.dumps(api_receipt, allow_nan=False))
         init_templates = {}
         for kind in ("backtest", "compare", "validate", "walk-forward"):
             config = work / f"init-{kind}.json"
@@ -256,6 +286,12 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
             "doctor": {
                 "exit": doctor_result.returncode,
                 "invalid_config_exit": doctor_bad.returncode,
+            },
+            "public_api": {
+                "evidence_sha256": api_receipt["evidence_sha256"],
+                "input_content_sha256": api_receipt["input_content_sha256"],
+                "markdown_sha256": api_receipt["markdown_sha256"],
+                "final_balance": api_receipt["result"]["final_balance"],
             },
         }
     finally:

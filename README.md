@@ -50,6 +50,8 @@ from replacing an existing file.
 
 See the [Quick Start and Research Tutorial](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/QUICK_START.md) for comparison,
 chronological validation, walk-forward, interpretation, and real-market-data notes.
+Python applications can use the same workflows in process through the stable
+[`BacktestClient` API](docs/PYTHON_API.md), including direct reports from typed results.
 For development, `poetry install` creates the project environment and
 `poetry run strategy-backtest ...` runs commands there; the Quick Start above instead
 installs the checkout into a separate virtual environment and runs its installed CLI.

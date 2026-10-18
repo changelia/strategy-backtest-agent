@@ -62,9 +62,9 @@ _UNSUPPORTED = (
 )
 
 
-def create_client() -> OpenAI:
-    """Read credentials only from the environment; bound requests and disable retries."""
-    key = os.environ.get("OPENAI_API_KEY", "").strip()
+def create_client(api_key: str | None = None) -> OpenAI:
+    """Create a bounded SDK client, using an explicit key before the environment."""
+    key = (os.environ.get("OPENAI_API_KEY", "") if api_key is None else api_key).strip()
     if not key:
         raise StrategyParseError("OPENAI_API_KEY is missing; export it before using ai")
     return OpenAI(api_key=key, base_url="https://api.openai.com/v1", timeout=30, max_retries=0)
@@ -98,12 +98,18 @@ def _comparison_configuration(output: ComparisonParserOutput) -> ComparisonConfi
     return output.configuration.validated_config()
 
 
-def parse_strategy(text: str) -> AIStrategyConfig:
+def parse_strategy(
+    text: str, *, api_key: str | None = None, model: str | None = None
+) -> AIStrategyConfig:
     """Extract a supported single-strategy request with the existing defaults."""
-    return _parse_request(text, ParserOutput, SYSTEM_PROMPT, _strategy_configuration)
+    return _parse_request(
+        text, ParserOutput, SYSTEM_PROMPT, _strategy_configuration, api_key=api_key, model=model
+    )
 
 
-def parse_comparison(text: str) -> ComparisonConfig:
+def parse_comparison(
+    text: str, *, api_key: str | None = None, model: str | None = None
+) -> ComparisonConfig:
     """One structured request for all comparison rules and shared settings."""
     return _parse_request(
         text,
@@ -111,6 +117,8 @@ def parse_comparison(text: str) -> ComparisonConfig:
         COMPARISON_PROMPT,
         _comparison_configuration,
         max_output_tokens=16384,
+        api_key=api_key,
+        model=model,
     )
 
 
@@ -121,7 +129,9 @@ def _validation_configuration(output: ValidationParserOutput) -> ValidationConfi
     return output.configuration.validated_config()
 
 
-def parse_validation(text: str) -> ValidationConfig:
+def parse_validation(
+    text: str, *, api_key: str | None = None, model: str | None = None
+) -> ValidationConfig:
     """One extraction request; holdout execution and results remain entirely in Python."""
     if re.search(
         r"\b(?:random|shuffl\w*|optimi[sz]\w*|tun(?:e|ing)|walk[- ]forward|folds?)\b"
@@ -138,6 +148,8 @@ def parse_validation(text: str) -> ValidationConfig:
         VALIDATION_PROMPT,
         _validation_configuration,
         max_output_tokens=16384,
+        api_key=api_key,
+        model=model,
     )
 
 
@@ -148,7 +160,9 @@ def _sensitivity_configuration(output: SensitivityParserOutput) -> SensitivityCo
     return output.configuration.validated_config()
 
 
-def parse_sensitivity(text: str) -> SensitivityConfig:
+def parse_sensitivity(
+    text: str, *, api_key: str | None = None, model: str | None = None
+) -> SensitivityConfig:
     """Extract one bounded grid; deterministic Python expands and validates every variant."""
     if re.search(
         r"\b(?:random|shuffl\w*|optimi[sz]\w*|tun(?:e|ing)|walk[- ]forward|folds?)\b"
@@ -166,6 +180,8 @@ def parse_sensitivity(text: str) -> SensitivityConfig:
         SENSITIVITY_PROMPT,
         _sensitivity_configuration,
         max_output_tokens=16384,
+        api_key=api_key,
+        model=model,
     )
 
 
@@ -201,6 +217,8 @@ def _parse_request(
     convert: Callable[[OutputT], ConfigT],
     *,
     max_output_tokens: int = 4096,
+    api_key: str | None = None,
+    model: str | None = None,
 ) -> ConfigT:
     """Shared SDK boundary, unsupported checks, validation and sanitized errors."""
     if not text.strip():
@@ -213,13 +231,16 @@ def _parse_request(
                 f"Unsupported strategy: {label}. "
                 "Currently supported: long-only RSI, SMA, EMA, MACD, Bollinger and ATR level rules"
             )
-    model = os.environ.get("OPENAI_MODEL", DEFAULT_MODEL).strip()
-    if not model:
+    requested_model = (
+        os.environ.get("OPENAI_MODEL", DEFAULT_MODEL) if model is None else model
+    ).strip()
+    if not requested_model:
         raise StrategyParseError("OPENAI_MODEL must not be empty")
     try:
-        with create_client() as client:
+        client_context = create_client() if api_key is None else create_client(api_key=api_key)
+        with client_context as client:
             response = client.responses.parse(
-                model=model,
+                model=requested_model,
                 instructions=instructions,
                 input=text,
                 text_format=schema,
@@ -272,7 +293,9 @@ def _walk_forward_configuration(output: WalkForwardParserOutput) -> WalkForwardC
     return output.configuration.validated_config()
 
 
-def parse_walk_forward(text: str) -> WalkForwardConfig:
+def parse_walk_forward(
+    text: str, *, api_key: str | None = None, model: str | None = None
+) -> WalkForwardConfig:
     """Extract fixed rules and protocol only; all financial calculations stay in Python."""
     if re.search(
         r"\b(?:random|shuffl\w*|optimi[sz]\w*|tun(?:e|ing)|adaptive|select|choose|pick|winner|best)\b"
@@ -287,4 +310,6 @@ def parse_walk_forward(text: str) -> WalkForwardConfig:
         WALK_FORWARD_PROMPT,
         _walk_forward_configuration,
         max_output_tokens=16384,
+        api_key=api_key,
+        model=model,
     )

@@ -4,25 +4,17 @@ import argparse
 import asyncio
 import json
 import sys
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 from pydantic import ValidationError
 
-from strategy_backtest_agent.backtester import run_backtest
-from strategy_backtest_agent.demo import demo_candles
 from strategy_backtest_agent.execution import format_costs, format_execution
 from strategy_backtest_agent.market_data import TIMEFRAMES, BinanceMarketData, MarketDataError
 from strategy_backtest_agent.models import BacktestConfig
-from strategy_backtest_agent.rules.evaluator import dependencies, prepare_context, warmup_count
 from strategy_backtest_agent.rules.formatter import format_rule
-from strategy_backtest_agent.rules.history import fetch_rule_history
-from strategy_backtest_agent.rules.indicator_specs import (
-    indicator_from_key,
-    initialization_profiles,
-)
-from strategy_backtest_agent.rules.models import Indicator, IndicatorInitialization, RuleStrategy
+from strategy_backtest_agent.rules.models import RuleStrategy
+from strategy_backtest_agent.services import backtest_payload, execute_backtest
 
 
 def _percent(value: float | None) -> str:
@@ -37,81 +29,16 @@ async def _run(
     ai_context: dict[str, object] | None = None,
     strategy: RuleStrategy | None = None,
 ) -> None:
-    end = datetime.now(UTC)
-    boundary = 0
-    if strategy is not None:
-        candles, boundary = await fetch_rule_history(
-            BinanceMarketData(),
-            config.symbol,
-            config.timeframe,
-            end - timedelta(days=days),
-            end,
-            strategy,
-        )
-    elif demo:
-        candles = demo_candles(config.timeframe, days)
-    else:
-        candles = await BinanceMarketData().fetch_candles(
-            config.symbol,
-            config.timeframe,
-            end - timedelta(days=days),
-            end,
-        )
-    if strategy is None and len(candles) <= config.rsi_period:
-        raise ValueError("not enough completed candles to calculate RSI; increase days")
-    anchors: list[IndicatorInitialization] = []
-    context = None
-    if strategy is not None and any(
-        not isinstance(indicator_from_key(*key), Indicator) for key in dependencies(strategy)
-    ):
-        # Preserve legacy shared seeds while locally anchoring advanced dependencies.
-        context = prepare_context(candles, dependencies(strategy), evaluation_start=boundary)
-        anchors = initialization_profiles(
-            candles, boundary, dependencies(strategy), local_seeds=False
-        )
-    result = run_backtest(candles, config, strategy, evaluation_start=boundary, context=context)
-    candles = candles[boundary:]
+    execution = await execute_backtest(
+        config, days, demo=demo, strategy=strategy, provider=BinanceMarketData()
+    )
+    candles, result, boundary = (
+        execution.evaluation_candles,
+        execution.result,
+        execution.evaluation_start,
+    )
     if as_json:
-        payload = {
-            "symbol": config.symbol,
-            "timeframe": config.timeframe,
-            "period_days": days,
-            "data_source": "synthetic_demo" if demo else "binance",
-            "candle_count": len(candles),
-            "start_time": candles[0].timestamp.isoformat().replace("+00:00", "Z"),
-            "end_time": candles[-1].timestamp.isoformat().replace("+00:00", "Z"),
-            "strategy": {
-                "name": "RSI",
-                "rsi_period": config.rsi_period,
-                "entry_rsi": config.entry_rsi,
-                "exit_rsi": config.exit_rsi,
-                "fee": config.trading_fee,
-            },
-            **result.model_dump(mode="json"),
-        }
-        if strategy is not None:
-            payload["strategy"] = strategy.model_dump(mode="json")
-            payload["trading_fee"] = config.trading_fee
-            payload["indicator_configuration"] = [
-                (
-                    {"name": spec.name, "period": spec.period}
-                    if isinstance(spec, Indicator)
-                    else spec.model_dump(mode="json")
-                )
-                for key in sorted(dependencies(strategy))
-                for spec in [indicator_from_key(*key)]
-            ]
-            payload["evaluation_period"] = {
-                "requested_start": (end - timedelta(days=days)).isoformat().replace("+00:00", "Z"),
-                "requested_end": end.isoformat().replace("+00:00", "Z"),
-                "warmup_candles": boundary,
-                "required_warmup_candles": warmup_count(strategy),
-                "ema_policy": "first-close seed, five spans of prior closes",
-            }
-            if anchors:
-                payload["indicator_initializations"] = [
-                    item.model_dump(mode="json") for item in anchors
-                ]
+        payload = backtest_payload(execution)
         if ai_context is not None:
             payload = {**ai_context, "backtest_result": payload}
         print(json.dumps(payload, allow_nan=False))

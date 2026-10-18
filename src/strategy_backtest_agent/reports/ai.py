@@ -92,13 +92,15 @@ def validate_interpretation(
         raise ValueError("duplicate research questions")
 
 
-def interpret(report: ResearchReport) -> ResearchReport:
+def interpret(
+    report: ResearchReport, *, api_key: str | None = None, model: str | None = None
+) -> ResearchReport:
     # SDK/client imports and environment access occur only for explicit --ai.
     from openai import OpenAIError
 
     from strategy_backtest_agent.ai.parser import DEFAULT_MODEL, create_client
 
-    requested = os.environ.get("OPENAI_MODEL", DEFAULT_MODEL).strip()
+    requested = (os.environ.get("OPENAI_MODEL", DEFAULT_MODEL) if model is None else model).strip()
     if not re.fullmatch(r"[A-Za-z0-9_.:/-]{1,128}", requested):
         return report.model_copy(
             update={
@@ -111,7 +113,7 @@ def interpret(report: ResearchReport) -> ResearchReport:
         )
     metadata = AIMetadata(requested_model=requested, response_model=None)
     try:
-        client = create_client()
+        client = create_client() if api_key is None else create_client(api_key=api_key)
     except (ValueError, OpenAIError):
         return report.model_copy(
             update={
