@@ -2,8 +2,12 @@
 
 import math
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from strategy_backtest_agent.models import Candle
+
+if TYPE_CHECKING:
+    from strategy_backtest_agent.comparison.models import SharedConfig
 
 
 def demo_candles(timeframe: str, days: int) -> list[Candle]:
@@ -34,3 +38,19 @@ def demo_candles(timeframe: str, days: int) -> list[Candle]:
         )
         previous = close
     return candles
+
+
+def research_demo_candles(config: "SharedConfig") -> list[Candle]:
+    """Supply exact warm-up and evaluation candles to existing research engines."""
+    from strategy_backtest_agent.comparison.engine import required_warmup
+    from strategy_backtest_agent.rules.history import interval_duration
+
+    duration = interval_duration(config.timeframe)
+    required = required_warmup(config)
+    extra_days = math.ceil(required * duration.total_seconds() / 86400)
+    candles = demo_candles(config.timeframe, config.period_days + extra_days)
+    end = candles[-1].timestamp + duration
+    if config.evaluation_end is not None and config.evaluation_end != end:
+        raise ValueError("--demo requires evaluation_end 2024-07-01T00:00:00Z or null")
+    count = config.period_days * 86400 // int(duration.total_seconds()) + required
+    return candles[-count:]

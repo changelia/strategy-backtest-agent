@@ -113,7 +113,9 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
     env = clean_environment(venv)
 
     def run(args: list[str], *, success: bool = True) -> subprocess.CompletedProcess[bytes]:
-        result = subprocess.run(args, cwd=work, env=env, capture_output=True, timeout=120)
+        result = subprocess.run(
+            args, cwd=work, env=env, stdin=subprocess.DEVNULL, capture_output=True, timeout=120
+        )
         if success:
             assert result.returncode == 0, result.stderr.decode()
         return result
@@ -191,6 +193,25 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
         assert bad.returncode == 2 and not bad.stdout
         assert b"Error:" in bad.stderr and b"Traceback" not in bad.stderr
         assert b"DO_NOT_ECHO_SYNTHETIC" not in bad.stderr
+        init_templates = {}
+        for kind in ("backtest", "compare", "validate", "walk-forward"):
+            config = work / f"init-{kind}.json"
+            args = [str(cli), "init", "--type", kind, "--output", str(config)]
+            run(args)
+            original = config.read_bytes()
+            duplicate = run(args, success=False)
+            assert duplicate.returncode == 2 and b"Error:" in duplicate.stderr
+            assert config.read_bytes() == original
+            command = [str(cli)] + ([] if kind == "backtest" else [kind])
+            result_content = run([*command, "--config", str(config), "--demo", "--json"]).stdout
+            generated = json.loads(result_content)
+            source = generated.get("data_source") or generated["shared_data"]["source"]
+            assert source == "synthetic_demo"
+            init_templates[kind] = {
+                "config_sha256": hashlib.sha256(original).hexdigest(),
+                "result_sha256": hashlib.sha256(result_content).hexdigest(),
+                "overwrite_exit": duplicate.returncode,
+            }
         assert not audit.read_text(), "Application attempted network access"
         return {
             "status": "BLOCKED" if failures else "READY",
@@ -206,6 +227,7 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
             "negative_exit": bad.returncode,
             "negative_error": bad.stderr.decode().strip(),
             "network_attempts": 0,
+            "init_templates": init_templates,
         }
     finally:
         guard.unlink()  # Only this helper's own temporary instrumentation.

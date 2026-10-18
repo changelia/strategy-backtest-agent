@@ -25,7 +25,7 @@ def compare_receipts(wheel: dict[str, Any], sdist: dict[str, Any]) -> None:
             raise ValueError("Installed application attempted network access")
         if set(receipt["report_sha256"]) != {"json", "markdown"}:
             raise ValueError("Missing installed report format")
-    for key in ("demo", "report_sha256", "evidence_sha256"):
+    for key in ("demo", "report_sha256", "evidence_sha256", "init_templates"):
         if wheel[key] != sdist[key]:
             raise ValueError(f"Wheel/sdist outputs differ: {key}")
 

@@ -5,6 +5,7 @@ import asyncio
 import json
 import sys
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 from pydantic import ValidationError
@@ -148,6 +149,11 @@ async def _run(
 def main() -> None:
     """Load local settings once, then dispatch the requested CLI command."""
     load_dotenv(dotenv_path=find_dotenv(usecwd=True), override=False)
+    if sys.argv[1:2] == ["init"]:
+        from strategy_backtest_agent.init_cli import main as init_main
+
+        init_main(sys.argv[2:])
+        return
     if sys.argv[1:2] == ["report"]:
         from strategy_backtest_agent.reports.cli import main as report_main
 
@@ -183,8 +189,12 @@ def main() -> None:
         return
     parser = argparse.ArgumentParser(
         description="Backtest a long-only RSI strategy",
-        epilog='Natural language: strategy-backtest ai "Backtest BTCUSDT" [--json]',
+        epilog=(
+            "Templates: strategy-backtest init --help. "
+            'Natural language: strategy-backtest ai "Backtest BTCUSDT" [--json]'
+        ),
     )
+    parser.add_argument("--config", type=Path, help="BacktestConfig JSON; duration uses --days")
     parser.add_argument("--symbol", default="BTCUSDT", help="Uppercase provider symbol (BTCUSDT)")
     parser.add_argument(
         "--timeframe", choices=TIMEFRAMES, default="1h", help="Candle interval (1h)"
@@ -225,22 +235,44 @@ def main() -> None:
     try:
         if args.days <= 0:
             raise ValueError("days must be positive")
-        config = BacktestConfig.model_validate(
-            {
-                "symbol": args.symbol,
-                "timeframe": args.timeframe,
-                "initial_balance": args.balance,
-                "trading_fee": args.fee,
-                "execution": {
-                    "fee_rate": args.fee,
-                    "spread_bps": args.spread_bps or 0,
-                    "slippage_bps": args.slippage_bps or 0,
-                },
-                "rsi_period": args.rsi_period,
-                "entry_rsi": args.entry_rsi,
-                "exit_rsi": args.exit_rsi,
+        if args.config is not None:
+            incompatible = {
+                "--symbol",
+                "--timeframe",
+                "--balance",
+                "--fee",
+                "--trading-fee",
+                "--rsi-period",
+                "--entry-rsi",
+                "--exit-rsi",
             }
-        )
+            if any(
+                token.startswith("--")
+                and any(flag.startswith(token.split("=", 1)[0]) for flag in incompatible)
+                for token in sys.argv[1:]
+            ):
+                raise ValueError("--config cannot be combined with legacy strategy/account flags")
+            config = BacktestConfig.model_validate_json(args.config.read_text(encoding="utf-8"))
+            from strategy_backtest_agent.execution_cli import override_execution
+
+            config = override_execution(config, args)
+        else:
+            config = BacktestConfig.model_validate(
+                {
+                    "symbol": args.symbol,
+                    "timeframe": args.timeframe,
+                    "initial_balance": args.balance,
+                    "trading_fee": args.fee,
+                    "execution": {
+                        "fee_rate": args.fee,
+                        "spread_bps": args.spread_bps or 0,
+                        "slippage_bps": args.slippage_bps or 0,
+                    },
+                    "rsi_period": args.rsi_period,
+                    "entry_rsi": args.entry_rsi,
+                    "exit_rsi": args.exit_rsi,
+                }
+            )
         asyncio.run(_run(config, args.days, args.demo, args.json))
     except ValidationError as exc:
         messages = "; ".join(
@@ -248,7 +280,7 @@ def main() -> None:
             for error in exc.errors()
         )
         parser.exit(2, f"Error: {messages}\n")
-    except (ValueError, OverflowError, MarketDataError) as exc:
+    except (ValueError, OverflowError, OSError, MarketDataError) as exc:
         parser.exit(2, f"Error: {exc}\n")
 
 

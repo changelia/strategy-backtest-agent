@@ -22,7 +22,11 @@ def override_execution(config: ConfigT, args: argparse.Namespace) -> ConfigT:
     # this CLI helper to the AI package or individual engine models.
     values = config.model_dump()
     raw = values.get("execution")
-    execution = dict(raw) if isinstance(raw, dict) else {"fee_rate": values.get("fee", 0.001)}
+    execution = (
+        dict(raw)
+        if isinstance(raw, dict)
+        else {"fee_rate": values.get("fee", values.get("trading_fee", 0.001))}
+    )
     if args.spread_bps is not None:
         execution["spread_bps"] = args.spread_bps
     if args.slippage_bps is not None:

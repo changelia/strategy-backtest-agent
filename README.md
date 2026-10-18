@@ -442,6 +442,37 @@ requires POSIX filesystem support and rejects symlink directories and parent
 traversal. Reports preserve Train/Test distinctions and historical limitations;
 positive returns do not establish predictive value.
 
+## Configuration templates
+
+Create validated JSON without prompts, OpenAI credentials, or repository examples.
+`--output` must name a new file; existing files/directories and symlink destinations
+are rejected. Missing real parent directories are created. No overwrite flag exists.
+
+```bash
+strategy-backtest init --type backtest --output backtest-config.json
+strategy-backtest --config backtest-config.json --days 180 --demo --json
+strategy-backtest init --type compare --output comparison-config.json
+strategy-backtest compare --config comparison-config.json --demo --json
+strategy-backtest init --type validate --output validation-config.json
+strategy-backtest validate --config validation-config.json --demo --json
+strategy-backtest init --type walk-forward --output walk-forward-config.json
+strategy-backtest walk-forward --config walk-forward-config.json --demo --json
+```
+
+In a Poetry checkout, prefix these commands with `poetry run`. All four examples
+run offline on deterministic synthetic candles and do not imply profitability.
+Backtest uses `BacktestConfig`; its duration remains the CLI `--days` option
+(default 180), and legacy account/strategy flags cannot accompany `--config`.
+Spread/slippage flags can override costs. Other templates use their existing
+research models (30 days for compare/validate, 60 days for walk-forward).
+They declare balance 10000, fee 0.001 per side, full spread 10 bps and slippage
+5 bps per side. Walk-forward uses rolling 30-day Train/10-day Test windows,
+10-day steps and independent portfolios. These are fixed examples, not optimization.
+`--demo` uses the fixed 2024-07-01 UTC end with exact prior warm-up candles;
+research configs must use that end or null. For real Binance history omit `--demo`
+and choose an appropriate evaluation period; that requires network access.
+Safe file publication requires POSIX directory operations, as report output does.
+
 ## Development
 
 ```bash
