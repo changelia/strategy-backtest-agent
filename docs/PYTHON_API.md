@@ -1,96 +1,215 @@
 # Python API
 
-`BacktestClient` is the supported in-process interface to the same deterministic research engines used by the CLI. It does not start subprocesses, print output, or access the network on import or construction. Calls that fetch Binance history require network access; `demo=True` uses only the bundled synthetic candle generator. AI parsing and report interpretation are separate optional paid API requests.
+`BacktestClient` calls the same validated research engines as the CLI. It does not
+start subprocesses, print output, or access the network on import or construction.
+Use `demo=True` for synthetic candles and offline research. Without demo mode, research
+fetches historical candles from Binance. Natural-language parsing and AI report
+interpretation call OpenAI and may incur charges.
 
-## Installation and configuration
+## Installation and client configuration
 
-The client requires the package runtime dependencies. Configure AI explicitly on one client or through the environment:
+Python 3.12 or newer is required. The documented/tested platform is POSIX. In a source
+checkout, install with `poetry install`; the package is not yet confirmed published to
+PyPI. The installed distribution will be available as `strategy-backtest-agent` after
+publication.
 
 ```python
 from strategy_backtest_agent import BacktestClient
 
-client = BacktestClient(api_key="YOUR_OPENAI_API_KEY", model="gpt-4.1-mini")
+client = BacktestClient()
+offline_client = BacktestClient(api_key=None)
+ai_client = BacktestClient(api_key="<your OpenAI API key>", model="gpt-4.1-mini")
 ```
 
-Values resolve as explicit client setting, then `OPENAI_API_KEY` / `OPENAI_MODEL`, then an explicitly selected `dotenv_path`, and finally the default model (`gpt-4.1-mini`). An explicitly empty value remains empty. `dotenv_path` is opt-in and is read without modifying `os.environ`; shell variables take precedence. No credential value is included in result or diagnostic objects. Do not commit keys. Missing credentials do not affect structured offline runs or deterministic reports.
+For each setting, precedence is explicit client value, environment (`OPENAI_API_KEY`
+or `OPENAI_MODEL`), explicitly selected dotenv file, then the model default
+(`gpt-4.1-mini`). Pass `dotenv_path=".env"` to opt in; its values are read without
+modifying `os.environ`. The CLI's automatic `.env` loading does not apply to Python
+clients. Explicit empty settings remain empty. Never commit real keys. Neither a key's
+presence nor a model name establishes provider validity or availability.
 
 ## Structured offline backtest
 
-Use `config=` for a validated model, mapping or JSON file path. A positional string is always a natural-language request and is never treated as a path. Conflicting positional text and `config=` are rejected.
+`config=` accepts an existing validated model, mapping, or JSON file path. A positional
+string is natural-language text only; the client never guesses whether it is a filename.
+Do not supply both forms.
 
 ```python
 from strategy_backtest_agent import BacktestClient
 
 client = BacktestClient()
 config = client.template("backtest")  # BacktestConfig
-result = client.run(config=config, days=90, demo=True)
+result = client.run(config=config, days=3, demo=True)
+
 print(result.summary())
 print(result.total_return_percent)
+result_json = result.model_dump_json()
 ```
 
-`run()` accepts the existing `BacktestConfig` and AI-parser `AIStrategyConfig` schemas. For a typed DSL strategy, pass an `AIStrategyConfig` with its `RuleStrategy`. Indicator and rule constructors are available from the package root: `RuleStrategy`, `Comparison`, `Group`, `Price`, `Value`, `Indicator`, `MACDIndicator`, `BollingerIndicator`, and `ATRIndicator`.
+`run(request, ...)` accepts a natural-language request and parses it before research.
+`run(config=...)` accepts the existing `BacktestConfig` or `AIStrategyConfig` model.
+Both may also receive mappings or JSON paths. Use `days=` only for a backtest template;
+parsed and `AIStrategyConfig` durations must agree with their configuration. `demo=True`
+uses the fixed synthetic series and its 2024-07-01 UTC end.
 
-The client returns `ClientResult`. The complete mode-specific Pydantic result is available as `.data` and its fields are proxied for convenience. For strict serialization, use `.model_dump()` or `.model_dump_json()`. `to_json()` returns source research JSON accepted by the report adapter; normal report generation can use the result directly and does not require this serialization step.
+`ClientResult.data` is the complete mode-specific Pydantic result; fields are also
+proxied on `ClientResult`. `summary()` provides a concise text view, `model_dump()`
+returns the typed result data, and `model_dump_json()` serializes it strictly. `to_json()`
+returns the CLI-compatible source result accepted by the report adapter.
 
-## Existing research workflows
+## All six research modes
 
-These methods use their existing validated configurations and engines. `demo=True` is supported for each and uses synthetic data.
+The client methods are `run`, `compare`, `validate`, `sensitivity`, `costs`, and
+`walk_forward`. Their async equivalents are `arun`, `acompare`, `avalidate`,
+`asensitivity`, `acosts`, and `awalk_forward`. The four shipped templates are
+`backtest`, `compare`, `validate`, and `walk-forward`. Sensitivity and cost scenarios
+use their existing exported config models. This complete offline example constructs
+those two configs explicitly and uses templates for the other modes:
+
+```python
+from datetime import UTC, datetime
+
+from strategy_backtest_agent import (
+    BacktestClient,
+    Comparison,
+    CostScenario,
+    CostScenarioConfig,
+    Indicator,
+    ParameterSpec,
+    Price,
+    RuleStrategy,
+    SensitivityConfig,
+    Value,
+)
+
+client = BacktestClient()
+comparison = client.compare(config=client.template("compare"), demo=True)
+validation = client.validate(config=client.template("validate"), demo=True)
+walk_forward = client.walk_forward(
+    config=client.template("walk-forward"), demo=True
+)
+
+strategy = RuleStrategy(
+    entry=Comparison(
+        left=Indicator(name="rsi", period=14), operator="<", right=Value(value=30.0)
+    ),
+    exit=Comparison(
+        left=Indicator(name="rsi", period=14), operator=">", right=Value(value=70.0)
+    ),
+)
+sensitivity_config = SensitivityConfig(
+    symbol="BTCUSDT",
+    timeframe="1h",
+    period_days=3,
+    initial_balance=10000,
+    fee=0.001,
+    evaluation_end=datetime(2024, 7, 1, tzinfo=UTC),
+    base_strategy=strategy,
+    parameters=[ParameterSpec(path="entry.right.value", values=[25.0, 30.0])],
+)
+sensitivity = client.sensitivity(config=sensitivity_config, demo=True)
+
+cost_config = CostScenarioConfig(
+    symbol="BTCUSDT",
+    timeframe="1h",
+    period_days=3,
+    initial_balance=10000,
+    fee=0.001,
+    evaluation_end=datetime(2024, 7, 1, tzinfo=UTC),
+    strategy=strategy,
+    scenarios=[
+        CostScenario(id="baseline", name="Baseline"),
+        CostScenario(
+            id="modeled-costs", name="Illustrative costs", spread_bps=10, slippage_bps=5
+        ),
+    ],
+)
+costs = client.costs(config=cost_config, demo=True)
+
+print(comparison.research_type, validation.research_type, sensitivity.research_type)
+print(costs.research_type, walk_forward.research_type)
+```
+
+`compare`, `validate`, `sensitivity`, and `walk_forward` accept natural-language text
+through their existing parsers; that parse is a paid OpenAI request. `costs` is
+config-only. Each result retains its mode-specific structures: comparison strategies,
+Train/Test segments, sensitivity variants, cost scenarios, or Walk-Forward folds.
+Results are not flattened into one common financial report model.
+
+## Parse, inspect, then execute
+
+Parsing is separate from execution. It returns a validated existing configuration and
+does not fetch candles. This example requires OpenAI credentials and may incur charges;
+execution itself uses synthetic candles because `demo=True`.
+
+```python
+from strategy_backtest_agent import BacktestClient, AIStrategyConfig
+
+client = BacktestClient()  # Reads OPENAI_API_KEY / OPENAI_MODEL when present
+config = client.parse(
+    "Backtest BTCUSDT on 1h for 3 days. Buy when RSI(14) is below 30 "
+    "and sell when RSI(14) is above 70."
+)
+assert isinstance(config, AIStrategyConfig)
+print(config.model_dump_json(indent=2))
+result = client.run(config=config, demo=True)
+```
+
+The parser validates supported rule structures and rejects unsupported crossover
+semantics. It does not calculate indicators, trades, or financial metrics.
+
+## Reports directly from results
+
+`report()` accepts a `ClientResult` or an existing supported typed result/report,
+mapping, or JSON path. It validates and renders existing evidence; it never reruns a
+backtest or fetches market data. Default Markdown and JSON reports are deterministic
+and offline. Optional AI interpretation is a separate paid OpenAI request and must be
+explicitly enabled with `ai=True`.
 
 ```python
 from strategy_backtest_agent import BacktestClient
 
 client = BacktestClient()
-comparison_config = client.template("compare")
-validation_config = client.template("validate")
-walk_forward_config = client.template("walk-forward")
+result = client.run(config=client.template("backtest"), days=3, demo=True)
+markdown = client.report(result, format="markdown")
+json_report = result.save_report("research-report.json", format="json")
 
-comparison = client.compare(config=comparison_config, demo=True)
-validation = client.validate(config=validation_config, demo=True)
-walk_forward = client.walk_forward(config=walk_forward_config, demo=True)
-
-# Supply the existing SensitivityConfig and CostScenarioConfig models:
-sensitivity = client.sensitivity(config=sensitivity_config, demo=True)
-cost_scenarios = client.costs(config=cost_scenario_config, demo=True)
-```
-
-`compare`, `validate`, `sensitivity`, and `walk_forward` also accept natural-language text, which invokes the existing structured OpenAI parser. `costs` is config-only because the current CLI has no cost-scenario parser. `template()` provides the four existing templates (`backtest`, `compare`, `validate`, `walk-forward`) as in-memory validated models; optional `output=` saves a new file and refuses to overwrite. It does not invent templates for sensitivity or costs.
-
-Each workflow retains its own result model and methodology: independent strategy results, Train/Test segments, sensitivity variants, cost scenarios, or Walk-Forward folds are not flattened. Existing indicator initialization, execution costs, benchmark rules, and segment-local portfolio resets remain in force. The client adds no optimization or strategy selection.
-
-## Parse before execution
-
-Parsing is explicit and returns an existing validated config model. It does not fetch market data or execute a backtest.
-
-```python
-config = client.parse(
-    "Backtest BTCUSDT on 1h for 90 days. Buy when RSI(14) is below 30 and sell above 70."
-)
-print(config.model_dump_json(indent=2))
-result = client.run(config=config, demo=True)
-```
-
-Supported parser workflows are `backtest`, `compare`, `validate`, `sensitivity`, and `walk-forward`. Existing unsupported constructs and crossover semantics remain rejected. Natural-language parsing requires a configured key and can incur provider charges; deterministic calculations are Python operations.
-
-## Reports from results
-
-Report generation validates existing evidence and never reruns research or fetches candles. It is deterministic by default; AI interpretation requires `ai=True`.
-
-```python
-report_json = client.report(result, format="json")
-report_markdown = result.save_report("research-report.md")
-
-# Saving through report() is also explicit and no-overwrite:
-client.report(result, format="json", output="research-report.json")
-
-# Optional evidence-constrained AI interpretation:
+# Optional AI interpretation: OpenAI credentials required; may incur charges.
 interpreted = client.report(result, format="markdown", ai=True)
 ```
 
-`report()` accepts a `ClientResult`, supported typed result/report, mapping, or existing JSON path. Formats are `markdown` and `json`. File output uses the existing atomic no-overwrite writer; choose a fresh destination for each run. For existing async loops use `await client.areport(...)` for AI-enabled reporting.
+Both `report(..., output=...)` and `result.save_report(path, ...)` create a new file
+and refuse to overwrite. `report()` returns the rendered string, including when it also
+writes to `output=`. JSON reports preserve normalized evidence, source and evidence
+hashes, provenance, warnings, and optional interpretation. AI interpretation uses the
+existing constrained structured response and falls back to deterministic output when
+unavailable or rejected. It does not change financial evidence.
+
+## Templates and diagnostics
+
+`template(kind)` returns a validated in-memory model. `output=` optionally saves it to
+a new path without overwriting. Supported kinds are `backtest`, `compare`, `validate`,
+and `walk-forward`; it does not create sensitivity or cost configs.
+
+```python
+from strategy_backtest_agent import BacktestClient
+
+client = BacktestClient()
+template = client.template("backtest")
+diagnostics = client.doctor()
+print(diagnostics.offline_ready, diagnostics.api_key_present)
+```
+
+`doctor()` returns structured, offline diagnostics and does not print, exit, repair
+files, or validate an unspecified config. A configured key means only that a nonempty
+value exists; no provider check is made. Pass both `workflow=` and `config=` to
+validate one explicit configuration.
 
 ## Async applications
 
-Synchronous network-backed methods use `asyncio.run` only when no event loop is active. In an async application, use the corresponding awaitable method; synchronous methods fail clearly instead of nesting event loops.
+Use async methods inside an existing event loop. They share the same implementation
+as synchronous calls; synchronous methods report an error rather than nesting
+`asyncio.run()` when called from an active loop.
 
 ```python
 import asyncio
@@ -98,22 +217,49 @@ from strategy_backtest_agent import BacktestClient
 
 async def research() -> None:
     client = BacktestClient()
-    config = client.template("backtest")
-    result = await client.arun(config=config, days=90, demo=True)
-    report = await client.areport(result, format="json")
-    print(result.summary())
+    result = await client.arun(config=client.template("backtest"), days=3, demo=True)
+    markdown = await client.areport(result, format="markdown")
+    print(result.summary(), len(markdown))
 
 asyncio.run(research())
 ```
 
-Async counterparts are `aparse`, `arun`, `acompare`, `avalidate`, `asensitivity`, `acosts`, `awalk_forward`, and `areport`. They call the same parsers and research engines as their synchronous counterparts.
+The async methods are `aparse`, `arun`, `acompare`, `avalidate`, `asensitivity`,
+`acosts`, `awalk_forward`, and `areport`. AI-enabled `areport(..., ai=True)` and
+`aparse()` may make paid OpenAI requests. Demo research is synthetic and offline.
 
-## Diagnostics and errors
+## Equivalent CLI usage
 
-`client.doctor()` returns `DoctorDiagnostics` without printing, exiting, validating unspecified files, or making network requests. Pass both `workflow=` and `config=` to validate one explicitly supplied config. A present key only means a nonempty value was configured; it does not prove provider validity or availability.
+The Python client is optional; the installed CLI supports the same research engines.
+Config mode and the demo require no OpenAI credentials or network access:
 
-Invalid client input and safe-output failures raise `BacktestClientError`; model errors raised by explicit parsing retain `StrategyParseError`, and unsupported Pydantic input can be inspected through the exported `ValidationError`. Provider and parser errors retain their existing sanitized behavior. Key values are omitted from `repr(client)`, summaries, reports, and doctor output.
+```bash
+strategy-backtest init --type backtest --output config.json
+strategy-backtest --config config.json --days 3 --demo --json
+strategy-backtest report --input result.json --format markdown --output report.md
+strategy-backtest doctor
+```
 
-## Limits
+Without `--demo`, research fetches Binance history. `strategy-backtest ai "..."`
+uses OpenAI to parse a natural-language strategy and may incur charges. In a Poetry
+checkout, prefix commands with `poetry run`.
 
-This is historical research software, not live trading, investment advice, or a forecast. `demo=True` is synthetic and is not a profitability example. Historical results do not establish future performance. API parsing and optional interpretation are not deterministic financial calculations, and provider behavior is not tested by offline examples. The package preserves the current workflows and their limits; it does not add indicators, data providers, optimization, crossover rules, or new report schemas.
+## Supported rules, execution, and limitations
+
+Rule strategies support RSI, SMA, EMA, MACD, Bollinger Bands, ATR, completed-candle
+price, constants, level comparisons (`<`, `<=`, `>`, `>=`), and nested AND/OR groups.
+MACD state comparisons are not crossover events; crossover operators are unsupported.
+Rule complexity and indicator period limits are validated by the existing DSL.
+
+Signals use a completed candle and execute at the next candle open. Fees are charged
+per executed side; spread input is the full spread, with half applied to each side;
+slippage is adverse per side. Buy & Hold uses the same declared costs. Positions are
+liquidated at the final close of their segment. Validation and Walk-Forward segments
+use independent portfolios. Modeled costs are assumptions, not measured fills.
+
+Sensitivity evaluates only its declared Train grid and does not select parameters.
+Walk-Forward aggregates independent Test folds; a stitched index compounds normalized
+fold returns and does not represent carried positions. Repeatedly inspecting Test
+periods contaminates their held-out role. Historical results and synthetic demo data
+do not establish future profitability or statistical robustness. The client adds no
+indicators, providers, optimization, live trading, or investment advice.
