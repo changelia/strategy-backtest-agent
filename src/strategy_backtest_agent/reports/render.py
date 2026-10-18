@@ -6,6 +6,7 @@ from collections import OrderedDict
 from datetime import datetime
 from typing import Any
 
+from strategy_backtest_agent.reports.inputs import LegacyCLISettings
 from strategy_backtest_agent.reports.models import EvidenceMetric, EvidenceScope, ResearchReport
 from strategy_backtest_agent.rules.formatter import format_rule
 from strategy_backtest_agent.rules.models import RuleStrategy
@@ -259,10 +260,15 @@ def markdown(report: ResearchReport) -> str:
         if scope.label not in labels:
             labels.append(scope.label)
     for identifier, labels, definition in definitions.values():
-        rule = RuleStrategy.model_validate(definition)
+        if definition.get("name") == "RSI":
+            legacy = LegacyCLISettings.model_validate(definition)
+            entry = f"RSI({legacy.rsi_period}) < {legacy.entry_rsi:g}"
+            exit_rule = f"RSI({legacy.rsi_period}) > {legacy.exit_rsi:g}"
+        else:
+            rule = RuleStrategy.model_validate(definition)
+            entry, exit_rule = format_rule(rule.entry), format_rule(rule.exit)
         lines.append(
-            f"| {identifier} | {cell(', '.join(labels))} | "
-            f"{cell(format_rule(rule.entry))} | {cell(format_rule(rule.exit))} |"
+            f"| {identifier} | {cell(', '.join(labels))} | {cell(entry)} | {cell(exit_rule)} |"
         )
     lines.extend(
         [
