@@ -1,22 +1,41 @@
 # Strategy Backtest Agent
 
-Released v1.1.0 provides the command-line research workflows for backtests, strategy
-comparison, chronological validation, parameter sensitivity, execution-cost scenarios,
-and Walk-Forward Analysis. The `BacktestClient` shown below is an unreleased preview on
-the `feat/public-python-api` branch. The project performs historical research; it does
-not place orders or predict future returns.
+Research fixed, single-symbol trading strategies on historical or synthetic candles.
+The Python application calculates indicators, signals, trades, execution costs,
+benchmarks, and metrics deterministically. Optional OpenAI features parse natural
+language into validated rules or explain existing research evidence. This is a
+historical research tool; it does not place orders or predict future returns.
 
-## Installation
+## Table of contents
 
-**Released CLI (v1.1.0):** install the current release with pip:
+- [Installation and release status](#installation-and-release-status)
+- [Python API quick start](#python-api-quick-start)
+- [CLI quick start](#cli-quick-start)
+- [Research workflows and configurations](#research-workflows-and-configurations)
+- [Strategies and indicators](#strategies-and-indicators)
+- [Execution assumptions and limitations](#execution-assumptions-and-limitations)
+- [Reports](#reports)
+- [AI configuration](#ai-configuration)
+- [Development](#development)
+
+## Installation and release status
+
+The released **v1.1.0** distribution provides the command-line interface:
 
 ```bash
 python -m pip install strategy-backtest-agent==1.1.0
 ```
 
-The unreleased `BacktestClient` API on `feat/public-python-api` is not included in
-that distribution. To preview the API, use Python 3.12+ and Poetry with the feature
-branch source:
+The documented and CI-tested environment is POSIX with Python 3.12 or newer
+(project requirement `>=3.12,<4.0`). Safe config and report file creation uses POSIX
+filesystem operations; Windows file-output support is unavailable. For development,
+clone the repository and run `poetry install`, then prefix CLI commands with
+`poetry run`. A pip installation runs the installed CLI from its environment.
+
+The `BacktestClient` Python API below is an **unreleased preview** on the
+[`feat/public-python-api` branch](https://github.com/changelia/strategy-backtest-agent/tree/feat/public-python-api).
+It is not included in the released v1.1.0 pip distribution. To try the preview, use
+the feature branch source with Poetry:
 
 ```bash
 git clone --branch feat/public-python-api https://github.com/changelia/strategy-backtest-agent.git
@@ -24,15 +43,15 @@ cd strategy-backtest-agent
 poetry install
 ```
 
-The documented and CI-tested platform is POSIX; safe report and template file creation
-uses POSIX filesystem operations. `poetry run strategy-backtest ...` uses the source
-checkout's development environment; the released pip installation provides the
-v1.1.0 CLI.
+The [CLI Quick Start and Research Tutorial](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/QUICK_START.md)
+has a complete installed-source workflow. The [Python API reference](https://github.com/changelia/strategy-backtest-agent/blob/feat/public-python-api/docs/PYTHON_API.md)
+documents every client operation and runnable examples. These absolute GitHub links
+also work from the PyPI project page.
 
-## Offline Python quick start
+## Python API quick start
 
-This example uses the bundled synthetic candles. It needs no OpenAI key, Binance
-request, or network access after installation:
+This preview example uses synthetic data, so the research and deterministic report
+need no credentials or network access:
 
 ```python
 from strategy_backtest_agent import BacktestClient
@@ -43,94 +62,200 @@ result = client.run(config=config, days=3, demo=True)
 
 print(result.summary())
 print(f"Return: {result.total_return_percent:.2f}%")
-print(result.model_dump_json())
-markdown = client.report(result, format="markdown")
-json_report = client.report(result, format="json")
+report_markdown = client.report(result, format="markdown")
+report_json = client.report(result, format="json")
 ```
 
-The result is typed and retains the fields for its research mode. `summary()` is a
-human-readable view; `model_dump()` and `model_dump_json()` serialize the underlying
-result. This API example requires the feature-branch preview above; it is not available
-from the released v1.1.0 pip package. Reports are generated directly from the in-memory
-result without rerunning research or fetching candles. Deterministic reports need no AI
-credentials. See the
-[Python API reference](https://github.com/changelia/strategy-backtest-agent/blob/feat/public-python-api/docs/PYTHON_API.md)
-for complete examples of all six modes, async calls, and safe report saving.
+The result remains typed and exposes the source metrics; reports are generated from
+the in-memory result without rerunning the backtest. See the [complete Python API
+guide](https://github.com/changelia/strategy-backtest-agent/blob/feat/public-python-api/docs/PYTHON_API.md)
+for comparisons, validation, sensitivity, costs, Walk-Forward, parsing, async calls,
+safe saving, templates, and diagnostics. The released v1.1.0 package currently
+provides the CLI; use the feature-branch instructions above for `BacktestClient`.
 
-## AI and market-data access
+## CLI quick start
 
-Natural-language parsing and optional AI report interpretation make paid OpenAI API
-requests. Set `OPENAI_API_KEY` and optionally `OPENAI_MODEL`, or pass `api_key=` and
-`model=` to `BacktestClient`; explicit client settings take precedence over the
-environment. The current default model is `gpt-4.1-mini`. Never put credentials in
-source control. Doctor reports only whether a nonempty key is configured; it does not
-test the key or provider availability.
-
-Structured configuration, synthetic `demo=True` research, deterministic reports,
-templates, and doctor diagnostics work offline. Research without `demo=True` fetches
-historical OHLCV candles from Binance and requires network access. The CLI loads a
-local `.env` automatically when present; shell environment variables take precedence.
-Python clients read a dotenv file only when explicitly passed `dotenv_path=`.
-
-## Research modes
-
-All modes reuse the same validated strategy language and portfolio engine:
-
-| Mode | Purpose | Important boundary |
-| --- | --- | --- |
-| Backtest | Evaluate one fixed strategy | Historical evaluation window |
-| Comparison | Compare fixed strategies on shared candles | Independent portfolios and common assumptions |
-| Validation | Chronological Train/Test evaluation | Test is held out only if not repeatedly inspected |
-| Sensitivity | Evaluate a declared parameter grid | Train-only; no automatic selection |
-| Cost scenarios | Compare declared fee/spread/slippage assumptions | Train-only; assumptions are illustrative |
-| Walk-Forward | Evaluate fixed strategies across chronological windows | Independent Train/Test portfolios and Test-only aggregation |
-
-`BacktestClient` provides `run`, `compare`, `validate`, `sensitivity`, `costs`, and
-`walk_forward`. Research configs can be passed as validated models, mappings, or JSON
-paths through `config=`. `template()` provides the existing backtest, comparison,
-validation, and Walk-Forward templates; sensitivity and cost scenarios use their
-existing configuration models.
-
-## Strategies and execution
-
-Supported rules use RSI, SMA, EMA, MACD, Bollinger Bands, ATR, completed-candle price,
-and constants with `<`, `<=`, `>`, `>=` comparisons and nested AND/OR groups. A level
-comparison such as `MACD > signal` is a state condition, not a crossover event;
-crossover operators are unsupported. Short selling, leverage, stop-loss/take-profit
-orders, multiple symbols in one portfolio, and live trading are outside the supported
-model.
-
-Signals use completed candles and execute at the next candle open. Fees are charged
-per executed side; modeled spread is the full bid/ask spread, with half applied on each
-side; slippage is adverse per side. Buy & Hold uses the same declared costs. Open
-positions are liquidated at the end of their evaluation segment. Validation and
-Walk-Forward segments start with independent capital. Synthetic demo prices are fixed
-test data, not a performance example. Historical returns, even across multiple folds,
-do not establish future profitability or statistical robustness.
-
-## CLI quick reference
-
-The CLI offers the same research workflows. Config-only and offline examples need no
-OpenAI credentials; omit `--demo` to fetch Binance history.
+The following commands use the released CLI, fixed synthetic candles, and no OpenAI
+credentials. Start in a new directory; config and report outputs refuse to overwrite,
+and `set -C` protects the shell-created raw result file:
 
 ```bash
+mkdir research-run
+cd research-run
 strategy-backtest doctor
-strategy-backtest init --type backtest --output research-config.json
+strategy-backtest init --type backtest --output backtest-config.json
 set -C
-strategy-backtest --config research-config.json --days 3 --demo --json > result.json
-strategy-backtest report --input result.json --format markdown --output report.md
+strategy-backtest --config backtest-config.json --days 3 --demo --json > backtest-result.json
+strategy-backtest report --input backtest-result.json --format json --output research-report.json
+strategy-backtest report --input backtest-result.json --format markdown --output research-report.md
 ```
 
-This sequence is offline. `set -C` makes the shell refuse to replace an existing
-`result.json`; use a new working directory when rerunning it. Natural-language CLI
-parsing uses OpenAI and may incur charges; its `ai` command then fetches Binance
-history and has no synthetic-data option. `init` creates templates only for backtest,
-comparison, validation, and Walk-Forward. All six workflows accept their existing
-validated configuration JSON; sensitivity and cost scenario configs use their
-documented schemas. Research result JSON is input to `report`; report JSON is a
-separate evidence-grounded document. Init and report output refuse to overwrite
-existing files. Full command help is available with `strategy-backtest --help`.
+The config, raw backtest result, evidence-grounded report JSON, and readable Markdown
+are separate files. To rerun, use a new directory and new output names. See the
+[Quick Start and Research Tutorial](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/QUICK_START.md)
+for comparison, chronological validation, and Walk-Forward commands, output
+interpretation, and a complete reproducible sequence.
+
+## Research workflows and configurations
+
+All six workflows use validated configurations and the existing deterministic
+backtester. Config-file workflows do not need an OpenAI key. Example configurations
+are available in the [repository examples](https://github.com/changelia/strategy-backtest-agent/tree/main/examples).
+For commands below, run from a source checkout and use `poetry run` when using its
+development environment. `--demo` selects fixed synthetic candles; omit it to fetch
+historical Binance candles, which requires network access.
+
+| Workflow | What it evaluates | Key interpretation |
+| --- | --- | --- |
+| Backtest | One fixed strategy over one historical window | One portfolio; benchmark and costs use the declared assumptions |
+| Comparison | 2–5 fixed strategies on shared candles | Each strategy has an independent portfolio; common data and settings |
+| Validation | Fixed strategies on chronological Train then Test | Test is held out only if it was not used to choose or tune the rules |
+| Sensitivity | A declared parameter grid on Train | Descriptive Train-only results; no automatic selection or optimization |
+| Cost scenarios | One strategy under declared cost assumptions on Train | Scenario assumptions are modeled inputs, not measured execution costs |
+| Walk-Forward | Fixed strategies across chronological Train/Test folds | Test folds have fresh portfolios; aggregate metrics use Test results only |
+
+From a checkout, these are the config consumers and matching example files:
+
+```bash
+poetry run strategy-backtest compare --config examples/comparison.json --demo --json
+poetry run strategy-backtest validate --config examples/validation.json --demo --json
+poetry run strategy-backtest sensitivity --config examples/sensitivity.json --json
+poetry run strategy-backtest costs --config examples/execution-scenarios.json --json
+poetry run strategy-backtest walk-forward --config examples/walk-forward.json --demo --json
+```
+
+`strategy-backtest init --type` creates complete backtest, compare, validate, or
+walk-forward configs; sensitivity and costs use their existing schemas and examples.
+The [detailed CLI tutorial](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/QUICK_START.md)
+explains configuration fields, fixed evaluation boundaries, offline execution, and
+the distinction between raw result JSON and report JSON.
+
+Comparison, validation, and Walk-Forward config commands above use synthetic offline
+data. The current sensitivity and cost-scenario CLI commands fetch Binance candles
+and require network access; they do not have a `--demo` option. Their deterministic
+calculations can still be exercised offline through the preview `BacktestClient`
+using `demo=True` as shown in the [Python API guide](https://github.com/changelia/strategy-backtest-agent/blob/feat/public-python-api/docs/PYTHON_API.md).
+
+Comparison fetches data once and keeps each strategy's portfolio separate. Its excess
+return is strategy return minus net Buy & Hold return, in percentage points. Validation
+uses chronological segments, fresh initial capital, and segment-local liquidation;
+Train positions and signals do not carry into Test. A Test period repeatedly inspected
+to change a strategy is no longer an independent holdout.
+
+Sensitivity evaluates only its declared Train grid. It does not rank, select, or
+recommend a variant. Walk-Forward evaluates the same predeclared strategies on each
+fold; Train is diagnostic and does not trigger parameter optimization. Fold Test
+results are independent. An optional stitched OOS index compounds normalized returns
+only for supported contiguous Test windows; it does not represent carried positions
+or a continuous account drawdown. Repeatedly examining the same history can still
+overfit, regardless of the number of folds.
+
+## Strategies and indicators
+
+The Strategy DSL supports RSI, SMA, EMA, MACD, Bollinger Bands, ATR, completed-candle
+price, constants, `<`, `<=`, `>`, `>=` comparisons, and nested AND/OR rules. Indicator
+components may be compared to each other. A comparison such as `MACD line > signal`
+is a state condition; it does not mean that a crossover just occurred. Crossover
+operators are unsupported. AI parsing validates supported rules; it does not calculate
+indicators, trades, prices, or financial metrics.
+
+| Indicator | Components and convention |
+| --- | --- |
+| RSI | Wilder RSI; default period 14 |
+| SMA / EMA | Close-based simple and exponential moving averages |
+| MACD | Fast EMA minus slow EMA, signal EMA, and histogram; defaults 12/26/9 |
+| Bollinger Bands | SMA middle and population standard deviation (`ddof=0`); defaults 20 and 2.0 |
+| ATR | True Range from high, low, and previous close; SMA seed then Wilder smoothing; default 14 |
+
+Indicators use causal historical initialization and the framework records warm-up and
+initialization boundaries in research metadata. Finite EMA, MACD, and ATR seed histories
+can still influence values near a threshold. Insufficient required history is rejected
+rather than silently shortening the requested evaluation. See
+[ARCHITECTURE.md](https://github.com/changelia/strategy-backtest-agent/blob/main/ARCHITECTURE.md)
+for exact formulas and initialization policies.
+
+The portfolio model is single-symbol, long-only, one position at a time, and uses the
+available cash allocation. Short selling, leverage, stop-loss/take-profit orders,
+multi-symbol portfolios, and live trading are outside the supported model.
+
+## Execution assumptions and limitations
+
+A signal is evaluated on a completed candle and executes at the next candle's open.
+Fees apply per executed side. Spread input is the **full bid/ask spread** in basis
+points, with half applied on each side; slippage is adverse basis points per side.
+Buy & Hold uses the same cost assumptions. Open positions are valued using reference
+prices and liquidated at their segment's final close. These are deterministic modeled
+costs, not measured fills or liquidity forecasts.
+
+The simulator assumes full fills, fractional quantities, and unlimited liquidity. It
+does not model funding, taxes, or exchange lot-size constraints. Drawdown samples
+candle opens and closes, not intrabar highs and lows. Historical data availability
+depends on Binance, network access, rate limits, and region. Synthetic demo candles are
+fixed test data, not evidence of strategy performance. Historical returns do not prove
+predictive value, future profitability, or robustness.
+
+## Reports
+
+`strategy-backtest report` accepts existing result JSON for all six research types:
+standard backtest (including the AI wrapper), comparison, validation, sensitivity,
+cost scenarios, and Walk-Forward. It validates the source and produces deterministic
+Markdown or JSON without fetching data or rerunning research:
+
+```bash
+strategy-backtest report --input backtest-result.json --format markdown --output report.md
+strategy-backtest report --input backtest-result.json --format json --output report.json
+```
+
+The JSON report preserves normalized evidence identifiers, source paths, units,
+observations, warnings, and provenance hashes. Markdown renders strategy rules and
+folds in readable form. A source candle hash is provenance metadata, not proof that
+the supplied data or result is authentic. Existing output paths are never overwritten.
+See the [synthetic report example](https://github.com/changelia/strategy-backtest-agent/blob/main/examples/research-report.md).
+
+AI interpretation is optional and explicitly requested with `--ai`; deterministic
+reporting remains available without credentials if interpretation is unavailable or
+rejected. The constrained AI layer cannot change financial evidence. Evidence references
+and structured output reduce risk, but do not prove every arbitrary natural-language
+claim true.
+
+## AI configuration
+
+The CLI loads `.env` at startup when present, with shell variables taking precedence.
+For example, use placeholders in a local ignored `.env` file:
+
+```dotenv
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+The default model is `gpt-4.1-mini`; `OPENAI_MODEL` can override it. Natural-language
+CLI parsing and optional report interpretation make OpenAI API requests and may incur
+charges. The `ai` strategy command also fetches Binance history. Structured CLI configs,
+`--demo`, deterministic reports, templates, and `doctor` work without OpenAI credentials.
+Doctor checks only whether a nonempty key is configured; it does not verify the key or
+provider availability. Never commit credentials. Python clients on the preview branch
+do not load `.env` automatically; use `dotenv_path=` to opt in.
+
+## Development
+
+Install the development environment with Poetry, then run the project's checks:
+
+```bash
+poetry install
+poetry run pytest
+poetry run ruff check .
+poetry run ruff format --check .
+poetry run mypy
+poetry run strategy-backtest --demo
+```
+
+Automated tests use synthetic data and mocked OpenAI/provider boundaries; they do not
+need real credentials or network calls. See
+[CONTRIBUTING.md](https://github.com/changelia/strategy-backtest-agent/blob/main/CONTRIBUTING.md)
+for development guidance and
+[CHANGELOG.md](https://github.com/changelia/strategy-backtest-agent/blob/main/CHANGELOG.md)
+for release history.
 
 ## License
 
-[MIT](LICENSE).
+[MIT](https://github.com/changelia/strategy-backtest-agent/blob/main/LICENSE).
