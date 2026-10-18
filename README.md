@@ -1,79 +1,59 @@
 # Strategy Backtest Agent
 
-**Describe a trading strategy in plain English. Backtest it against real historical market data.**
+**Research historical strategy rules with deterministic calculations and optional AI-assisted parsing.**
 
-Strategy Backtest Agent turns single-symbol, long-only trading rules into validated
-strategies and tests them on Binance historical candles. OpenAI interprets your
-request; Python calculates indicators, signals, trades, fees, and performance metrics.
-Use the CLI to explore a strategy or export JSON for your own research tools.
+Strategy Backtest Agent evaluates single-symbol, long-only strategy rules. Python
+calculates indicators, signals, trades, execution costs and metrics. Optional OpenAI
+features parse natural-language strategies and explain validated research evidence.
 
 Current release: **v1.0.0 — Evidence-Grounded AI Research Reports**.
 Release tag and package version: **v1.0.0**. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick Start
 
-Requires Python 3.12+, Poetry 2.x, an OpenAI API key for AI mode, and network access
-to OpenAI and Binance public market data.
+Requires Python 3.12 or newer, pip, and a POSIX environment. Report and configuration
+file creation uses POSIX filesystem operations; Windows file-output support is not
+available. Source installation was verified on macOS with Python 3.12 and in Ubuntu
+Python 3.12 CI. The commands below use deterministic synthetic data and need neither
+OpenAI credentials nor application network access.
 
 ```bash
 git clone https://github.com/changelia/strategy-backtest-agent.git
 cd strategy-backtest-agent
-poetry install
-export OPENAI_API_KEY="your_openai_api_key_here"
 
-poetry run strategy-backtest ai \
-  'Backtest BTCUSDT on 1h for 90 days. Buy when RSI 14 < 30 and price > EMA 200. Sell when RSI 14 > 70 or price < EMA 50. Start with $10,000.'
+REPO="$(pwd -P)"
+TMP_ROOT="$(python3.12 -c 'from pathlib import Path; import tempfile; print(Path(tempfile.gettempdir()).resolve())')"
+WORKDIR="$(mktemp -d "$TMP_ROOT/strategy-backtest.XXXXXX")"
+python3.12 -m venv "$WORKDIR/venv"
+"$WORKDIR/venv/bin/python" -m pip install "$REPO"
+cd "$WORKDIR"
+CLI="$WORKDIR/venv/bin/strategy-backtest"
+export PYTHON_DOTENV_DISABLED=1  # Keep this tutorial run independent of local .env files.
+set -C  # Refuse to overwrite JSON files created by shell redirection.
+
+env -u OPENAI_API_KEY -u OPENAI_MODEL PYTHON_DOTENV_DISABLED=1 "$CLI" doctor
+"$CLI" init --type backtest --output backtest-config.json
+"$CLI" --config backtest-config.json --days 180 --demo --json > backtest-result.json
+"$CLI" report --input backtest-result.json --format json --output research-report.json
+"$CLI" report --input backtest-result.json --format markdown --output research-report.md
 ```
 
-The command displays the parsed strategy and backtest results. Review the parsed
-rules: natural-language interpretation can be wrong even when validation succeeds.
-AI requests send your text to OpenAI and incur API usage charges. Both AI strategy
-parsing and report interpretation default to `gpt-4.1-mini`. `OPENAI_MODEL` overrides
-the default for both features; the selected model must support Responses and Structured Outputs.
-Never include secrets in strategy requests. See configuration below for shell and `.env` settings.
+The generated files have different roles: `backtest-config.json` is the research
+configuration; `backtest-result.json` is raw CLI output; `research-report.json` is
+normalized, evidence-grounded report data; and `research-report.md` is its readable
+rendering. Reports are deterministic for identical input bytes and generator version.
+Both configuration and report files refuse to overwrite existing paths. Start a new
+working directory for a rerun. The shell's `set -C` also prevents result redirection
+from replacing an existing file.
 
-Try the deterministic offline demo without credentials or network access:
-
-```bash
-poetry run strategy-backtest --demo --days 30
-```
-
-The demo is a reproducibility and CLI example, not a profitability example.
-The default 180-day run returns -98.77% (45 losing trades); this matches v0.9.0
-exactly under the fixed synthetic candles and existing RSI/execution rules.
-
-## Example Output
-
-Actual output from the 30-day offline demo above. The prices are **synthetic**, not
-historical BTCUSDT data; these results are not evidence of real-market performance.
-
-```text
-Strategy Backtest
-────────────────────────────────
-Symbol: BTCUSDT
-Timeframe: 1h
-Period: 30 days
-Data: synthetic offline demo (720 candles)
-Range (candle opens, UTC): 2024-06-01 00:00:00+00:00 → 2024-06-30 23:00:00+00:00
-
-Strategy: RSI
-RSI Period: 14
-Entry RSI: < 30
-Exit RSI: > 70
-Fee per side: 0.1%
-
-Results (quote currency)
-Initial Balance: 10,000.00
-Final Balance: 4,725.85
-Total Return: -52.74%
-Buy & Hold: +1.00%
-Trades: 8
-Winning Trades: 0
-Losing Trades: 8
-Win Rate: +0.00%
-Max Drawdown: -52.87%
-Profit Factor: 0.00
-```
+See the [Quick Start and Research Tutorial](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/QUICK_START.md) for comparison,
+chronological validation, walk-forward, interpretation, and real-market-data notes.
+For development, `poetry install` creates the project environment and
+`poetry run strategy-backtest ...` runs commands there; the Quick Start above instead
+installs the checkout into a separate virtual environment and runs its installed CLI.
+The project is not confirmed published on PyPI. After publication, the intended
+package install command will be `python -m pip install strategy-backtest-agent`;
+that command is not a working installation route at present.
 
 ## Configuration
 
