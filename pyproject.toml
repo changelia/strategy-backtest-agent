@@ -10,6 +10,16 @@ dynamic = ["dependencies"]
 
 [tool.poetry]
 packages = [{include = "strategy_backtest_agent", from = "src"}]
+# The sdist ships the harmless configuration template, not repository outputs/tests.
+include = [{path = ".env.example", format = "sdist"}]
+# Independent of Git ignores, including builds from an unpacked sdist.
+exclude = [
+    "**/.env", "**/.env.*", "**/.envrc", "**/.pypirc",
+    "**/__pycache__", "**/*.pyc", "**/*.pyo",
+    "**/.venv", "**/venv", "**/*.egg-info",
+    "**/.pytest_cache", "**/.mypy_cache", "**/.ruff_cache",
+    "**/build", "**/dist", "**/.git", "**/.DS_Store",
+]
 
 [tool.poetry.dependencies]
 python = "^3.12"
