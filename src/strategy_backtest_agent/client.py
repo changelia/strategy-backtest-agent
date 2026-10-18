@@ -5,16 +5,16 @@ from __future__ import annotations
 import asyncio
 import importlib.metadata
 import json
-import logging
 import os
 import sys
-import threading
 from collections.abc import Callable, Coroutine, Mapping, Sequence
 from datetime import UTC, datetime
+from io import StringIO
 from pathlib import Path
 from typing import Any, Literal, TypeVar, cast
 
-from dotenv import dotenv_values
+from dotenv.main import resolve_variables
+from dotenv.parser import parse_stream
 from pydantic import BaseModel, ValidationError
 
 from strategy_backtest_agent.ai.models import AIStrategyConfig
@@ -69,7 +69,6 @@ ResearchValue = (
 ConfigValue = BaseModel | Mapping[str, Any] | str | Path
 ConfigT = TypeVar("ConfigT", bound=BaseModel)
 ResultT = TypeVar("ResultT")
-_DOTENV_LOG_LOCK = threading.Lock()
 
 
 class BacktestClientError(RuntimeError):
@@ -175,22 +174,19 @@ class BacktestClient:
     ) -> None:
         dotenv: Mapping[str, str | None] = {}
         if dotenv_path is not None:
-            logger = logging.getLogger("dotenv.main")
-            with _DOTENV_LOG_LOCK:
-                previous = logger.handlers[:], logger.propagate, logger.level
-                try:
-                    logger.handlers = [logging.NullHandler()]
-                    logger.propagate = False
-                    logger.setLevel(logging.CRITICAL)
-                    dotenv = dotenv_values(
-                        dotenv_path=Path(dotenv_path), interpolate=True, verbose=False
-                    )
-                except (OSError, UnicodeError, ValueError):
-                    raise BacktestClientError(
-                        "Could not read the explicitly selected dotenv file"
-                    ) from None
-                finally:
-                    logger.handlers, logger.propagate, logger.level = previous
+            try:
+                contents = Path(dotenv_path).read_text(encoding="utf-8")
+                bindings = list(parse_stream(StringIO(contents)))
+                if any(binding.error for binding in bindings):
+                    raise ValueError("malformed dotenv file")
+                dotenv = resolve_variables(
+                    ((binding.key, binding.value) for binding in bindings if binding.key),
+                    override=True,
+                )
+            except (OSError, UnicodeError, ValueError):
+                raise BacktestClientError(
+                    "Could not read the explicitly selected dotenv file"
+                ) from None
         if api_key is not None:
             self._api_key, self._key_source = api_key, "client"
         elif "OPENAI_API_KEY" in os.environ:
@@ -348,7 +344,7 @@ class BacktestClient:
             backtest_config,
             run_days,
             demo=demo,
-            provider=self._provider or BinanceMarketData(),
+            provider=self._provider,
             strategy=strategy,
             evaluation_end=evaluation_end,
         )
@@ -438,7 +434,14 @@ class BacktestClient:
                 self._demo_history(typed, strategies), typed, data_source="synthetic_demo"
             )
         else:
-            value = await fetch(self._provider or BinanceMarketData(), typed, data_source="binance")
+            provider = self._provider
+            data_provider = provider if provider is not None else BinanceMarketData()
+            data_source = (
+                "custom"
+                if provider is not None and type(provider) is not BinanceMarketData
+                else "binance"
+            )
+            value = await fetch(data_provider, typed, data_source=data_source)
         return self._wrap(value, self._bytes(value), workflow)
 
     async def acompare(

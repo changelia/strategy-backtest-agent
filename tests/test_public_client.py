@@ -2,17 +2,21 @@
 
 import asyncio
 import json
+import logging
+import math
 import os
 import threading
 import time
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import httpx2
 import pytest
 from openai import OpenAI
 
 from strategy_backtest_agent import (
+    AIStrategyConfig,
     ATRIndicator,
     BacktestClient,
     BacktestClientError,
@@ -21,6 +25,7 @@ from strategy_backtest_agent import (
     ComparisonConfig,
     CostScenarioConfig,
     Group,
+    Indicator,
     MACDIndicator,
     NamedStrategy,
     ParameterSpec,
@@ -559,6 +564,64 @@ def test_mocked_ai_interpretation_uses_client_and_keeps_evidence(
     assert interpreted["evidence"] == source_evidence
 
 
+def test_concurrent_report_ai_keeps_client_credentials_and_models_isolated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from test_ai_parser import response_payload
+    from test_report_ai import output
+
+    from strategy_backtest_agent.ai import parser
+    from strategy_backtest_agent.reports.evidence import build_report
+
+    monkeypatch.setenv("OPENAI_API_KEY", "environment-key-marker")
+    monkeypatch.setenv("OPENAI_MODEL", "environment-model-marker")
+    environment_before = os.environ.copy()
+    barrier = threading.Barrier(2)
+    seen: list[tuple[str, str]] = []
+    expected = {
+        "client-one-model": "client-one-key-marker",
+        "client-two-model": "client-two-key-marker",
+    }
+    base_result = BacktestClient().run(config=template("backtest"), days=3, demo=True)
+    source_report = build_report(base_result.to_json().encode())
+    response = response_payload(output(source_report))
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        body = json.loads(request.content)
+        key = request.headers["authorization"].removeprefix("Bearer ")
+        pair = (body["model"], key)
+        assert expected.get(pair[0]) == pair[1]
+        barrier.wait(timeout=3)
+        seen.append(pair)
+        return httpx2.Response(200, json=response)
+
+    def mock_client(api_key: str | None = None) -> OpenAI:
+        return OpenAI(
+            api_key=api_key or "fallback-test-only",
+            http_client=httpx2.Client(transport=httpx2.MockTransport(handler)),
+            max_retries=0,
+        )
+
+    monkeypatch.setattr(parser, "create_client", mock_client)
+    first = BacktestClient(api_key="client-one-key-marker", model="client-one-model")
+    second = BacktestClient(api_key="client-two-key-marker", model="client-two-model")
+    first_result = first.run(config=template("backtest"), days=3, demo=True)
+    second_result = second.run(config=template("backtest"), days=3, demo=True)
+
+    async def interpret_both() -> tuple[str, str]:
+        return await asyncio.gather(
+            first.areport(first_result, format="json", ai=True),
+            second.areport(second_result, format="json", ai=True),
+        )
+
+    outputs = asyncio.run(interpret_both())
+    assert set(seen) == set(expected.items())
+    assert os.environ.copy() == environment_before
+    assert all(json.loads(value)["status"] == "ai_accepted" for value in outputs)
+    for secret in expected.values():
+        assert all(secret not in value for value in outputs)
+
+
 def test_ai_report_sync_call_rejects_active_loop(monkeypatch: pytest.MonkeyPatch) -> None:
     client = BacktestClient(api_key="synthetic-key")
     result = client.run(config=client.template("backtest"), days=3, demo=True)
@@ -585,3 +648,176 @@ def test_async_usage_inside_running_loop_and_sync_guard() -> None:
 def test_root_exports_rule_types_and_walk_forward_configuration() -> None:
     assert RuleStrategy.model_fields
     assert WalkForwardConfig.model_fields
+
+
+def test_rule_demo_uses_fixed_synthetic_boundaries_and_repeatable_reports(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import strategy_backtest_agent.services as services
+
+    class NeverFetch:
+        calls = 0
+
+        async def fetch_candles(self, *_args: Any, **_kwargs: Any) -> list[Candle]:
+            self.calls += 1
+            raise AssertionError("demo research must not fetch market data")
+
+    class FirstClock(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> Self:
+            return cls(2020, 1, 1, tzinfo=tz)
+
+    class SecondClock(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> Self:
+            return cls(2030, 1, 1, tzinfo=tz)
+
+    strategy = RuleStrategy(
+        entry=Comparison(
+            left=Indicator(name="rsi", period=14), operator="<", right=Value(value=30)
+        ),
+        exit=Comparison(left=Indicator(name="rsi", period=14), operator=">", right=Value(value=70)),
+    )
+    config = AIStrategyConfig(symbol="BTCUSDT", period_days=3, strategy=strategy)
+    provider = NeverFetch()
+    client = BacktestClient(market_data_provider=provider)
+
+    monkeypatch.setattr(services, "datetime", FirstClock)
+    first = client.run(config=config, demo=True)
+    monkeypatch.setattr(services, "datetime", SecondClock)
+    second = client.run(config=config, demo=True)
+
+    assert first.to_json() == second.to_json()
+    payload = json.loads(first.to_json())
+    assert payload["evaluation_period"]["requested_start"] == "2024-06-28T00:00:00Z"
+    assert payload["evaluation_period"]["requested_end"] == "2024-07-01T00:00:00Z"
+    assert isinstance(first.data, CLIBacktest)
+    assert first.data.start_time.isoformat() == "2024-06-28T00:00:00+00:00"
+    assert first.data.end_time.isoformat() == "2024-06-30T23:00:00+00:00"
+    with pytest.raises(ValueError, match="demo data ends"):
+        client.run(
+            config=config,
+            demo=True,
+            evaluation_end=datetime(2024, 7, 2, tzinfo=UTC),
+        )
+    json_report = client.report(first, format="json")
+    markdown_report = client.report(first, format="markdown")
+    assert json_report == client.report(second, format="json")
+    assert json_report == client.report(first, format="json")
+    assert markdown_report == client.report(second, format="markdown")
+    assert markdown_report == client.report(first, format="markdown")
+    assert provider.calls == 0
+
+
+class DeterministicProvider:
+    """Synthetic in-memory provider for source-label and report integration checks."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def __bool__(self) -> bool:
+        return False
+
+    async def fetch_candles(
+        self, _symbol: str, timeframe: str, start: datetime, end: datetime
+    ) -> list[Candle]:
+        from strategy_backtest_agent.rules.history import interval_duration
+
+        self.calls += 1
+        duration = interval_duration(timeframe)
+        candles: list[Candle] = []
+        timestamp = start
+        index = 0
+        previous = 100.0
+        while timestamp < end:
+            close = 100 + 5 * math.sin(index / 3) + index * 0.01
+            candles.append(
+                Candle(
+                    timestamp=timestamp,
+                    open=previous,
+                    high=max(previous, close) + 1,
+                    low=min(previous, close) - 1,
+                    close=close,
+                    volume=1,
+                )
+            )
+            previous = close
+            timestamp += duration
+            index += 1
+        return candles
+
+
+def test_custom_provider_provenance_reaches_all_research_results_and_reports() -> None:
+    end = datetime(2024, 7, 1, tzinfo=UTC)
+    provider = DeterministicProvider()
+    client = BacktestClient(market_data_provider=provider)
+    backtest = client.run(config=client.template("backtest"), days=3, evaluation_end=end)
+    comparison = client.compare(config=comparison_config(), demo=False)
+    validation_values = template("validate").model_dump(mode="json")
+    validation_values["period_days"] = 3
+    validation = client.validate(
+        config=ValidationConfig.model_validate_json(json.dumps(validation_values)), demo=False
+    )
+    sensitivity = client.sensitivity(config=sensitivity_config(), demo=False)
+    costs = client.costs(config=costs_config(), demo=False)
+    wf_values = template("walk-forward").model_dump(mode="json")
+    wf_values["period_days"] = 30
+    wf_values["windows"].update(train_days=15, test_days=5, step_days=5, max_folds=3)
+    walk_forward = client.walk_forward(
+        config=WalkForwardConfig.model_validate_json(json.dumps(wf_values)), demo=False
+    )
+
+    reports = (backtest, comparison, validation, sensitivity, costs, walk_forward)
+    assert provider.calls == len(reports)
+    for result in reports:
+        report_json = json.loads(client.report(result, format="json"))
+        assert report_json["evidence"]["source"]["data_source"] == "custom"
+        assert "custom" in client.report(result, format="markdown")
+    assert isinstance(backtest.data, CLIBacktest)
+    assert isinstance(comparison.data, ComparisonResult)
+    assert isinstance(validation.data, ValidationReport)
+    assert isinstance(sensitivity.data, SensitivityReport)
+    assert isinstance(costs.data, CostScenarioReport)
+    assert isinstance(walk_forward.data, WalkForwardReport)
+    assert backtest.data.data_source == "custom"
+    assert comparison.data.shared_data.source == "custom"
+    assert validation.data.shared_data.source == "custom"
+    assert sensitivity.data.shared_data.source == "custom"
+    assert costs.data.shared_data.source == "custom"
+    assert walk_forward.data.shared_data.source == "custom"
+
+
+def test_client_dotenv_parsing_does_not_change_or_use_global_logger(
+    tmp_path: Path, capsys: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    logger = logging.getLogger("dotenv.main")
+    original_handlers = logger.handlers[:]
+    original_propagate = logger.propagate
+    original_level = logger.level
+    original_disabled = logger.disabled
+    valid = tmp_path / "valid.env"
+    valid.write_text("OPENAI_API_KEY=dotenv-test-marker\nOPENAI_MODEL=test-model\n")
+    client = BacktestClient(dotenv_path=valid)
+    assert client._api_key == "dotenv-test-marker"
+    assert capsys.readouterr() == ("", "")
+    assert (logger.handlers, logger.propagate, logger.level, logger.disabled) == (
+        original_handlers,
+        original_propagate,
+        original_level,
+        original_disabled,
+    )
+
+    malformed = tmp_path / "malformed.env"
+    malformed.write_text("OPENAI_API_KEY=PRIVATE_DOTENV_MARKER\nBAD LINE PRIVATE_DOTENV_MARKER\n")
+    with pytest.raises(BacktestClientError, match="Could not read") as error:
+        BacktestClient(dotenv_path=malformed)
+    output = capsys.readouterr()
+    assert "PRIVATE_DOTENV_MARKER" not in str(error.value) + output.out + output.err
+    assert (logger.handlers, logger.propagate, logger.level, logger.disabled) == (
+        original_handlers,
+        original_propagate,
+        original_level,
+        original_disabled,
+    )

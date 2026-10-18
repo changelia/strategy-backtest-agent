@@ -25,6 +25,7 @@ class BacktestExecution:
     config: BacktestConfig
     days: int
     demo: bool
+    data_source: str
     requested_start: datetime
     requested_end: datetime
     candles: list[Candle]
@@ -50,7 +51,7 @@ async def execute_backtest(
     """Run the existing backtester through a shared live/demo orchestration path."""
     if type(days) is not int or days <= 0:
         raise ValueError("days must be a positive integer")
-    end = evaluation_end or datetime.now(UTC)
+    end = evaluation_end or (datetime(2024, 7, 1, tzinfo=UTC) if demo else datetime.now(UTC))
     if end.tzinfo is None:
         raise ValueError("evaluation_end must be timezone-aware")
     end = end.astimezone(UTC)
@@ -75,7 +76,7 @@ async def execute_backtest(
                 raise ValueError("synthetic demo could not satisfy indicator warm-up")
         else:
             candles, boundary = await fetch_rule_history(
-                provider or BinanceMarketData(),
+                provider if provider is not None else BinanceMarketData(),
                 config.symbol,
                 config.timeframe,
                 start,
@@ -85,9 +86,8 @@ async def execute_backtest(
     elif demo:
         candles = demo_candles(config.timeframe, days)
     else:
-        candles = await (provider or BinanceMarketData()).fetch_candles(
-            config.symbol, config.timeframe, start, end
-        )
+        data_provider = provider if provider is not None else BinanceMarketData()
+        candles = await data_provider.fetch_candles(config.symbol, config.timeframe, start, end)
     if strategy is None and len(candles) <= config.rsi_period:
         raise ValueError("not enough completed candles to calculate RSI; increase days")
     context = None
@@ -107,6 +107,13 @@ async def execute_backtest(
         config=config,
         days=days,
         demo=demo,
+        data_source=(
+            "synthetic_demo"
+            if demo
+            else "custom"
+            if provider is not None and type(provider) is not BinanceMarketData
+            else "binance"
+        ),
         requested_start=start,
         requested_end=end,
         candles=candles,
@@ -125,7 +132,7 @@ def backtest_payload(execution: BacktestExecution) -> dict[str, Any]:
         "symbol": config.symbol,
         "timeframe": config.timeframe,
         "period_days": execution.days,
-        "data_source": "synthetic_demo" if execution.demo else "binance",
+        "data_source": execution.data_source,
         "candle_count": len(candles),
         "start_time": candles[0].timestamp.isoformat().replace("+00:00", "Z"),
         "end_time": candles[-1].timestamp.isoformat().replace("+00:00", "Z"),
