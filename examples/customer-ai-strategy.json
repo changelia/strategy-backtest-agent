@@ -1,0 +1,41 @@
+{
+  "symbol": "BTCUSDT",
+  "timeframe": "1h",
+  "period_days": 30,
+  "initial_balance": 10000.0,
+  "fee": 0.001,
+  "execution": {
+    "fee_rate": 0.001,
+    "spread_bps": 10.0,
+    "slippage_bps": 5.0
+  },
+  "strategy": {
+    "type": "rules",
+    "entry": {
+      "type": "comparison",
+      "left": {
+        "type": "indicator",
+        "name": "rsi",
+        "period": 14
+      },
+      "operator": "<",
+      "right": {
+        "type": "value",
+        "value": 30.0
+      }
+    },
+    "exit": {
+      "type": "comparison",
+      "left": {
+        "type": "indicator",
+        "name": "rsi",
+        "period": 14
+      },
+      "operator": ">",
+      "right": {
+        "type": "value",
+        "value": 70.0
+      }
+    }
+  }
+}

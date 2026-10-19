@@ -11,7 +11,7 @@ interpreter:
 ```bash
 python --version
 python -m pip show strategy-backtest-agent
-python -m pip install --upgrade strategy-backtest-agent==1.2.0
+python -m pip install --upgrade strategy-backtest-agent
 ```
 
 Python must satisfy `>=3.12,<4.0`. If `strategy-backtest` is not found, use the
@@ -71,10 +71,13 @@ file that may contain research you want to preserve.
 
 ## Python event-loop errors
 
-Synchronous `BacktestClient` methods cannot run inside an active asyncio event loop.
+`parse`, `run`, `compare`, `validate`, `sensitivity`, `costs` and `walk_forward`
+use a synchronous wrapper that rejects an active asyncio event loop.
 In a notebook or async service, await the matching `a...` method such as
 `await client.arun(...)` or `await client.areport(...)`; do not call `asyncio.run()`
-inside an already running loop.
+inside an already running loop. `template()`, `doctor()` and `report(ai=False)`
+remain callable inside a loop. For `report(ai=True)`, use `await client.areport(...,
+ai=True)` instead.
 
 ## Report input errors
 
@@ -86,3 +89,38 @@ the original file without editing financial fields by hand.
 
 For more details, see [CLI Reference](CLI.md), [AI Guide](AI.md), and
 [Research Guide](RESEARCH_GUIDE.md).
+
+## Error messages and practical fixes
+
+These are messages or message families emitted by the current implementation; do
+not include credentials when sharing an error report.
+
+| Error / symptom | Likely cause | What to do |
+| --- | --- | --- |
+| `ModuleNotFoundError: No module named 'strategy_backtest_agent'` | Different interpreter/venv, or not installed | Activate your venv, run `python -m pip show strategy-backtest-agent`, install using that same Python. Use underscore in the import. |
+| `command not found: strategy-backtest` | Environment's bin directory not active | Reactivate the venv; inspect `which python` and `which strategy-backtest`. Use `.venv/bin/strategy-backtest` on POSIX if needed. |
+| `OPENAI_API_KEY is missing; export it before using ai` | Empty/missing key, Python dotenv not opted in, or environment set after client construction | Configure before creating a client, or use `BacktestClient(dotenv_path=".env")`. Inspect presence only with doctor; never print the key. |
+| `OPENAI_MODEL must not be empty` / AI unavailable invalid model | Empty or syntactically invalid configured model | Unset an accidental empty environment value or set the intended model; create a new client. Model access is not tested by doctor. |
+| OpenAI authentication / rate limit / timeout messages | Invalid key, quota/billing, unavailable model or network | Check private account settings/connectivity. A sanitized rate-limit error cannot distinguish all billing/quota causes. Do not retry by exposing keys in logs. |
+| `Request rejected` / unsupported crossover | Rule not in the supported DSL, ambiguity or missing fields | Use completed-candle state comparisons, one symbol, supported indicator parameters. Do not replace a crossover with a level rule unless you intend that different strategy. |
+| `CLIBacktest` / `evaluation_period.requested_start` says string should be datetime after direct Python natural-language run | Known v1.2.0 direct DSL wrapper defect | Use `config = client.parse(request)` then `client.run(config=config, demo=True)`; preserve source metrics. A runtime fix is outside the documentation task. |
+| `Invalid BacktestConfig configuration` / extra forbidden field | Wrong schema, e.g. `period_days` or nested `strategy` in root backtest | Put duration in `days=`/`--days`; use `AIStrategyConfig` with Python for DSL, or the matching research config. |
+| `days conflicts with config period_days` | Two different durations on an AI config/request | Omit `days=` or make it match the validated config. |
+| `--config cannot be combined with legacy strategy/account flags` | Root CLI has config and `--symbol`, `--fee`, etc. | Put those values in the config; keep only compatible duration/demo/JSON/cost flags. |
+| `--demo requires --config` | Natural-language comparison/validation/Walk-Forward with demo flag | Create/validate config first. This restriction does not apply to root backtest and is not an option for sensitivity/costs. |
+| `unrecognized arguments: --demo` | Sensitivity/costs CLI has no demo mode | Use Python `sensitivity(..., demo=True)` / `costs(..., demo=True)` for synthetic execution. |
+| `Unable to fetch valid historical candles` / `Provider rate limit` | Binance network/region/rate limit or invalid/incomplete data | Check symbol/timeframe/range, connectivity and provider Retry-After. The provider does not automatically retry. Use supported synthetic workflow to diagnose local execution. |
+| Insufficient warm-up/history or incomplete candles | Evaluation plus prior seed history unavailable | Request enough history and a complete interval; inspect initialization metadata. Do not silently shorten evaluation or change periods merely to force a result. |
+| `walk-forward requires at least two complete folds` | History too short for window protocol | Increase `period_days`, or deliberately choose smaller Train/Test/step. Step must be at least Test; max_folds must allow the complete count. |
+| `demo data ends at 2024-07-01T00:00:00Z` | Explicit end conflicts with synthetic end | Use that fixed aware UTC end or omit end in demo. Omit demo only if you intend provider access. |
+| `output already exists` / `Could not safely create report output` | Existing file, directory, symlink/parent traversal, or permissions | Use a new filename in a writable physical directory; do not overwrite preserved research. On macOS use `/private/tmp` instead of `/tmp` for safe-writer destinations. |
+| `Use the corresponding async client method inside an event loop` | Sync execution/parse called in notebook/async server | Await matching `a...` method. Do not nest `asyncio.run`. |
+| `Unsupported/corrupted research schema` | Report given config/normalized JSON, incomplete/edited source, or unsupported metadata | Use untouched raw `--json` output or `result.to_json()`. Keep all negative/null values and metadata. Report help's historical `v0.9` wording does not mean current raw output is unsupported. |
+| `ai_unavailable` / `ai_rejected` in report | Optional interpretation unavailable or failed grounding | Read deterministic evidence and warnings; fix account/config only if you intend another paid attempt. This is not a failed deterministic report. |
+
+For secret-free diagnosis, collect the installed version (`importlib.metadata.version`),
+command with keys removed, config schema name, sanitized error and `doctor` output.
+Do not share `.env`, raw environment dumps, credential-bearing provider headers or
+account data. Doctor checks presence/configuration and local readiness, not whether
+OpenAI is valid/funded, a model is available, or Binance is reachable. It does not
+repair files. See [AI failure behavior](AI.md#failures-and-boundaries).

@@ -1,0 +1,57 @@
+{
+  "symbol": "BTCUSDT",
+  "timeframe": "1h",
+  "period_days": 30,
+  "initial_balance": 10000.0,
+  "fee": 0.001,
+  "execution": {
+    "fee_rate": 0.001,
+    "spread_bps": 0.0,
+    "slippage_bps": 0.0
+  },
+  "evaluation_end": "2024-07-01T00:00:00Z",
+  "strategy": {
+    "type": "rules",
+    "entry": {
+      "type": "comparison",
+      "left": {
+        "type": "indicator",
+        "name": "rsi",
+        "period": 14
+      },
+      "operator": "<",
+      "right": {
+        "type": "value",
+        "value": 30.0
+      }
+    },
+    "exit": {
+      "type": "comparison",
+      "left": {
+        "type": "indicator",
+        "name": "rsi",
+        "period": 14
+      },
+      "operator": ">",
+      "right": {
+        "type": "value",
+        "value": 70.0
+      }
+    }
+  },
+  "train_ratio": 0.7,
+  "scenarios": [
+    {
+      "id": "baseline",
+      "name": "Fee-only baseline",
+      "spread_bps": 0.0,
+      "slippage_bps": 0.0
+    },
+    {
+      "id": "modeled",
+      "name": "Illustrative spread and slippage",
+      "spread_bps": 10.0,
+      "slippage_bps": 5.0
+    }
+  ]
+}

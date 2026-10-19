@@ -1,0 +1,36 @@
+{
+  "symbol": "BTCUSDT",
+  "timeframe": "1h",
+  "period_days": 30,
+  "initial_balance": 10000.0,
+  "fee": 0.001,
+  "execution": {
+    "fee_rate": 0.001,
+    "spread_bps": 10.0,
+    "slippage_bps": 5.0
+  },
+  "evaluation_end": "2024-07-01T00:00:00Z",
+  "strategies": [
+    {
+      "id": "rsi-30",
+      "name": "RSI 14 30/70",
+      "strategy": {
+        "type": "rsi",
+        "period": 14,
+        "entry_below": 30.0,
+        "exit_above": 70.0
+      }
+    },
+    {
+      "id": "rsi-25",
+      "name": "RSI 14 25/70",
+      "strategy": {
+        "type": "rsi",
+        "period": 14,
+        "entry_below": 25.0,
+        "exit_above": 70.0
+      }
+    }
+  ],
+  "sort_by": "total_return"
+}
