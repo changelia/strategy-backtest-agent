@@ -5,20 +5,20 @@ from release_gate import ReleaseGateError, validate_build_context, validate_publ
 
 BASE = {
     "event": "workflow_dispatch",
-    "ref": "refs/tags/v1.2.0",
+    "ref": "refs/tags/v1.2.1",
     "repository": "changelia/strategy-backtest-agent",
     "publish_requested": True,
-    "version": "1.2.0",
+    "version": "1.2.1",
 }
 
 
 def test_manual_branch_dispatch_is_a_valid_nonpublishing_dry_run() -> None:
     validate_build_context(
         event="workflow_dispatch",
-        ref="refs/heads/release/v1.2.0",
+        ref="refs/heads/release/v1.2.1",
         repository="changelia/strategy-backtest-agent",
         publish_requested=False,
-        version="1.2.0",
+        version="1.2.1",
     )
 
 
@@ -30,7 +30,7 @@ def test_manual_branch_dispatch_is_a_valid_nonpublishing_dry_run() -> None:
         ("push", "refs/heads/main", "changelia/strategy-backtest-agent", True),
         ("workflow_dispatch", "refs/heads/main", "changelia/strategy-backtest-agent", True),
         ("workflow_dispatch", "refs/tags/v1.0.0", "changelia/strategy-backtest-agent", True),
-        ("workflow_dispatch", "refs/tags/v1.2.0", "attacker/project", True),
+        ("workflow_dispatch", "refs/tags/v1.2.1", "attacker/project", True),
     ],
 )
 def test_build_gate_rejects_unapproved_contexts(
@@ -42,7 +42,7 @@ def test_build_gate_rejects_unapproved_contexts(
             ref=ref,
             repository=repository,
             publish_requested=publish,
-            version="1.2.0",
+            version="1.2.1",
         )
 
 
@@ -90,10 +90,10 @@ def test_publish_gate_rejects_mismatches_and_untrusted_context(
 def test_publish_gate_accepts_only_matching_annotated_main_tag() -> None:
     validate_publish_context(
         event="workflow_dispatch",
-        ref="refs/tags/v1.2.0",
+        ref="refs/tags/v1.2.1",
         repository="changelia/strategy-backtest-agent",
         publish_requested=True,
-        version="1.2.0",
+        version="1.2.1",
         workflow_sha="a" * 40,
         checkout_sha="a" * 40,
         tag_commit="a" * 40,

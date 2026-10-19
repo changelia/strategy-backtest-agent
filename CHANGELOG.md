@@ -1,6 +1,32 @@
 # Changelog
 
-## v1.2.0 — Public Python API (publication pending)
+## v1.2.1 — Customer Documentation (publication pending)
+
+### Changed
+
+- Reviewed customer documentation for the installed Python package and terminal:
+  installation, customer-defined strategies, optional OpenAI setup, all six research
+  modes, results and deterministic/optional AI-assisted reports.
+- Complete Python API and CLI references, validated JSON configurations, runnable
+  offline/async/custom-provider examples, and actionable troubleshooting guidance.
+- Clear separation of paid OpenAI parsing, Binance history requests and synthetic
+  offline execution; credential precedence, safe output handling and research limits.
+- Customer pip installation and upgrade examples remain unpinned. The revised README
+  will update the PyPI description only after a new distribution is published.
+
+### Compatibility, known limitations and release status
+
+- Package metadata is `1.2.1`; publication remains pending. This candidate includes
+  the reviewed documentation already on main and introduces no new runtime features.
+- Financial calculations, runtime dependencies and report/schema versions are unchanged.
+- The known direct natural-language single-backtest DSL defect is **not fixed**:
+  `client.run(text, demo=True)` can reject serialized evaluation timestamps when
+  parsing returns `RuleStrategy`. Use `parse()` followed by `run(config=parsed_config,
+  demo=True)` instead. The documentation records the reproduction and proposed
+  separate runtime correction; direct legacy RSI output does not expose that defect.
+- No live OpenAI request or live Binance research is part of candidate verification.
+
+## v1.2.0 — Public Python API
 
 ### Added
 
@@ -17,8 +43,8 @@
 
 - Existing CLI commands, financial calculations, research schemas, report schemas,
   and runtime dependencies are unchanged.
-- Package metadata is set to `1.2.0`. PyPI publication is pending; install the
-  version only after the release upload and metadata have been verified.
+- Released as package version `1.2.0` on PyPI. The public Python client and
+  existing CLI are available in that published release.
 - The Python API uses the existing providers and research engines. It adds no new
   indicators, trading features, optimization, or live execution.
 
