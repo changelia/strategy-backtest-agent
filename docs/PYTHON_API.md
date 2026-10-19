@@ -6,30 +6,22 @@ Use `demo=True` for synthetic candles and offline research. Without demo mode, r
 fetches historical candles from Binance. Natural-language parsing and AI report
 interpretation call OpenAI and may incur charges.
 
+Requirements and platform constraints are the same as the installed package:
+Python `>=3.12,<4.0`, with POSIX filesystem output for safe new-file creation.
+
 ## Installation and client configuration
 
-The released v1.1.0 distribution provides the CLI. The v1.2.0 candidate adds
-`BacktestClient` while preserving that CLI. **PyPI publication of v1.2.0 is pending**;
-verify the release upload before installing it. After publication, install the API and
-CLI together with:
+Version 1.2.0 is published and includes both the CLI and public Python API:
 
 ```bash
 python -m pip install strategy-backtest-agent==1.2.0
 ```
 
-After the reviewed release change is merged, and until publication is verified, use
-Python 3.12 or newer, Poetry, and the documented POSIX platform to install the main
-source checkout:
+For project development or unreleased source changes, follow
+[Contributing](../CONTRIBUTING.md). Customer examples do not require a Git clone.
 
-```bash
-git clone https://github.com/changelia/strategy-backtest-agent.git
-cd strategy-backtest-agent
-poetry install
-poetry run python -c 'from strategy_backtest_agent import BacktestClient; print(BacktestClient())'
-```
-
-`BacktestClient()` uses the installed source environment. To configure an AI-enabled
-client explicitly, supply `api_key="<your OpenAI API key>"` and optionally
+`BacktestClient()` captures environment configuration but makes no request. To
+configure an AI-enabled client explicitly, supply `api_key="<your OpenAI API key>"` and optionally
 `model="gpt-4.1-mini"`. No real credentials belong in examples or source control.
 
 For each setting, precedence is explicit client value, environment (`OPENAI_API_KEY`
@@ -43,6 +35,10 @@ it does not disable AI configuration. A plain `BacktestClient()` still performs 
 request unless parsing or `ai=True` interpretation is explicitly requested.
 
 ## Structured offline backtest
+
+Prerequisite: install the published package in an active Python 3.12+ virtual
+environment as shown above. This example uses fixed synthetic candles, no key and no
+network access.
 
 `config=` accepts an existing validated model, mapping, or JSON file path. A positional
 string is natural-language text only; the client never guesses whether it is a filename.
@@ -59,6 +55,9 @@ print(result.summary())
 print(result.total_return_percent)
 result_json = result.model_dump_json()
 ```
+
+Expected: a one-line summary, numeric return, and serialized raw result JSON. Next,
+create a normalized report directly from `result` as shown under Reports.
 
 `run(request, ...)` accepts a natural-language request and parses it before research.
 `run(config=...)` accepts the existing `BacktestConfig` or `AIStrategyConfig` model.
@@ -90,7 +89,6 @@ from strategy_backtest_agent import (
     CostScenarioConfig,
     Indicator,
     ParameterSpec,
-    Price,
     RuleStrategy,
     SensitivityConfig,
     Value,
@@ -144,6 +142,10 @@ print(comparison.research_type, validation.research_type, sensitivity.research_t
 print(costs.research_type, walk_forward.research_type)
 ```
 
+Expected: a typed research mode and formatted summary for each result. Next, inspect
+the mode-specific fields—folds, Train/Test segments, variants, scenarios, or strategy
+results—rather than combining them into one portfolio.
+
 `compare`, `validate`, `sensitivity`, and `walk_forward` accept natural-language text
 through their existing parsers; that parse is a paid OpenAI request. `costs` is
 config-only. Each result retains its mode-specific structures: comparison strategies,
@@ -171,6 +173,9 @@ result = client.run(config=config, demo=True)
 
 The parser validates supported rule structures and rejects unsupported crossover
 semantics. It does not calculate indicators, trades, or financial metrics.
+The printed JSON is the parsed, validated config; no data request has occurred yet.
+Next, execute that same config deliberately. `demo=True` keeps the subsequent run
+offline, but parsing above remains a paid OpenAI operation.
 
 ## Reports directly from results
 
@@ -186,11 +191,15 @@ from strategy_backtest_agent import BacktestClient
 client = BacktestClient()
 result = client.run(config=client.template("backtest"), days=3, demo=True)
 markdown = client.report(result, format="markdown")
-json_report = result.save_report("research-report.json", format="json")
+json_report = client.report(result, format="json")
 
 # Optional AI interpretation: OpenAI credentials required; may incur charges.
 interpreted = client.report(result, format="markdown", ai=True)
 ```
+
+Expected: Markdown and JSON strings from the same in-memory result. The optional final
+call may request OpenAI. Next, save a new report file using `output=` or
+`result.save_report(...)`; both refuse to overwrite.
 
 Both `report(..., output=...)` and `result.save_report(path, ...)` create a new file
 and refuse to overwrite. `report()` returns the rendered string, including when it also
@@ -213,6 +222,10 @@ template = client.template("backtest")
 diagnostics = client.doctor()
 print(diagnostics.offline_ready, diagnostics.api_key_present)
 ```
+
+Expected: a validated model and structured diagnostic object; no files are created and
+nothing is printed by the client itself. Next, pass an explicit config and its workflow
+to `doctor()` if you want schema validation.
 
 `doctor()` returns structured, offline diagnostics and does not print, exit, repair
 files, or validate an unspecified config. A configured key means only that a nonempty
@@ -238,9 +251,22 @@ async def research() -> None:
 asyncio.run(research())
 ```
 
+Expected: a formatted backtest summary and Markdown character count. In a notebook or
+service that already runs an event loop, call `await research()` from an async cell or
+await the operation methods directly—do not call `asyncio.run()` there.
+
 The async methods are `aparse`, `arun`, `acompare`, `avalidate`, `asensitivity`,
 `acosts`, `awalk_forward`, and `areport`. AI-enabled `areport(..., ai=True)` and
 `aparse()` may make paid OpenAI requests. Demo research is synthetic and offline.
+
+## Custom market-data providers
+
+`market_data_provider=` accepts the public `MarketDataProvider` protocol. Implement an
+async `fetch_candles(symbol, timeframe, start, end) -> list[Candle]` method returning
+validated candles for the requested timezone-aware UTC interval. A custom provider is
+used for non-demo research and is identified as `custom` in provenance; it is not
+mislabelled as Binance. `demo=True` uses the synthetic demo source and does not call the
+provider. The application does not offer another built-in provider.
 
 ## Equivalent CLI usage
 
@@ -248,7 +274,7 @@ The Python client is optional; the installed CLI supports the same research engi
 Config mode and the demo require no OpenAI credentials or network access:
 
 ```bash
-mkdir research-run
+mkdir research-run  # use a new directory
 cd research-run
 strategy-backtest init --type backtest --output config.json
 set -C
@@ -259,9 +285,8 @@ strategy-backtest doctor
 
 Without `--demo`, research fetches Binance history. `strategy-backtest ai "..."`
 uses OpenAI to parse a natural-language strategy and may incur charges. In a Poetry
-checkout, prefix commands with `poetry run`. This CLI example describes the released
-v1.1.0 command line and the matching CLI in the v1.2.0 candidate. The `BacktestClient`
-API ships in the v1.2.0 package after publication is verified.
+checkout, prefix commands with `poetry run`. Version 1.2.0 is published and includes
+both the `BacktestClient` API and the CLI.
 
 ## Supported rules, execution, and limitations
 
@@ -282,3 +307,92 @@ fold returns and does not represent carried positions. Repeatedly inspecting Tes
 periods contaminates their held-out role. Historical results and synthetic demo data
 do not establish future profitability or statistical robustness. The client adds no
 indicators, providers, optimization, live trading, or investment advice.
+
+## Public operation reference
+
+The supported root import is `from strategy_backtest_agent import BacktestClient`.
+Configuration/result models and exceptions are also exported from that package; import
+them from the root rather than internal modules. Common types include
+`BacktestConfig`, `AIStrategyConfig`, `ComparisonConfig`, `ValidationConfig`,
+`SensitivityConfig`, `CostScenarioConfig`, `WalkForwardConfig`, their corresponding
+result/report models, `RuleStrategy`, typed rule operands, `MarketDataProvider`,
+`BacktestClientError`, `MarketDataError`, `StrategyParseError`, and Pydantic's
+`ValidationError`.
+
+```python
+BacktestClient(
+    *, api_key: str | None = None, model: str | None = None,
+    dotenv_path: str | Path | None = None,
+    market_data_provider: MarketDataProvider | None = None,
+)
+```
+
+The `ConfigValue` input shown below means an existing Pydantic model, a mapping, or a
+JSON path (`str` or `Path`). Positional `request` arguments are natural-language text
+only. Supplying both
+request and config, neither input, or a non-text positional input raises
+`BacktestClientError`.
+
+```python
+client.parse(text: str, *, workflow: Literal[
+    "backtest", "compare", "validate", "sensitivity", "walk-forward"
+] = "backtest") -> BaseModel
+
+client.run(request: str | None = None, *, config: ConfigValue | None = None,
+           demo: bool = False, days: int | None = None,
+           evaluation_end: datetime | None = None) -> ClientResult
+client.compare(request: str | None = None, *, config: ConfigValue | None = None,
+               demo: bool = False) -> ClientResult
+client.validate(request: str | None = None, *, config: ConfigValue | None = None,
+                demo: bool = False) -> ClientResult
+client.sensitivity(request: str | None = None, *, config: ConfigValue | None = None,
+                   demo: bool = False) -> ClientResult
+client.costs(*, config: ConfigValue, demo: bool = False) -> ClientResult
+client.walk_forward(request: str | None = None, *, config: ConfigValue | None = None,
+                    demo: bool = False) -> ClientResult
+
+client.template(workflow: Literal["backtest", "compare", "validate", "walk-forward"],
+                *, output: str | Path | None = None) -> Model
+client.doctor(*, workflow: Literal[
+    "backtest", "compare", "validate", "sensitivity", "costs", "walk-forward"
+] | None = None,
+              config: ConfigValue | None = None) -> DoctorDiagnostics
+client.report(source: ClientResult | BaseModel | ResearchReport |
+              Mapping[str, Any] | str | Path, *,
+              format: Literal["markdown", "json"] = "markdown",
+              output: str | Path | None = None, ai: bool = False) -> str
+```
+
+Async equivalents are `aparse`, `arun`, `acompare`, `avalidate`, `asensitivity`,
+`acosts`, `awalk_forward`, and `areport`. They accept the same inputs and return the
+same model/result types. Synchronous methods raise `BacktestClientError` inside an
+active event loop; use the async methods there. Invalid configs produce sanitized
+`BacktestClientError`; parser rejections use `StrategyParseError`; provider failures
+use `MarketDataError` or a sanitized client error. Template/report file conflicts fail
+without replacing the destination.
+
+`ClientResult.data` retains the full mode-specific Pydantic model. Its attributes are
+proxied for convenient metric access. `summary()` returns formatted text;
+`model_dump()` and `model_dump_json()` serialize the typed engine model; `to_json()`
+returns CLI-compatible raw source JSON. `report()` instead returns normalized
+deterministic report JSON or Markdown and may safely save it through `output=`.
+`save_report(path, ...)` is available on the result object.
+
+There is no separate client `save_result()` or typed result loader. Save raw result JSON
+explicitly with exclusive-create mode, then pass that file to `report()`; it reads and
+validates existing data without rerunning the engine:
+
+```python
+from pathlib import Path
+from strategy_backtest_agent import BacktestClient
+
+client = BacktestClient()
+result = client.run(config=client.template("backtest"), days=3, demo=True)
+with Path("raw-result.json").open("x", encoding="utf-8") as stream:
+    stream.write(result.to_json())
+markdown = client.report("raw-result.json", format="markdown")
+result.save_report("report.json", format="json")
+```
+
+Opening with mode `"x"` refuses to replace an existing result file. The report writer
+also refuses to replace existing destinations.

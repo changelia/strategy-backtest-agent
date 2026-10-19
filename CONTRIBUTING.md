@@ -1,8 +1,12 @@
 # Contributing
 
-Use Python 3.12+ and Poetry 2.x. Clone the repository, then run:
+Use Python 3.12+ and Poetry 2.x. Source checkout and Poetry are for development;
+customers should install the published `strategy-backtest-agent` distribution with
+pip as described in the [Quick Start](docs/QUICK_START.md). To work on this repository:
 
 ```bash
+git clone https://github.com/changelia/strategy-backtest-agent.git
+cd strategy-backtest-agent
 poetry install
 poetry run strategy-backtest --demo
 poetry run pytest
