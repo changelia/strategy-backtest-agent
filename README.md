@@ -20,10 +20,12 @@ historical research tool; it does not place orders or predict future returns.
 
 ## Installation and release status
 
-The released **v1.1.0** distribution provides the command-line interface:
+The **v1.1.0** release provides the command-line interface. The v1.2.0 update adds
+the public Python API while preserving the CLI. **v1.2.0 publication is pending**;
+verify the PyPI upload before installing it. After publication, install the release with:
 
 ```bash
-python -m pip install strategy-backtest-agent==1.1.0
+python -m pip install strategy-backtest-agent==1.2.0
 ```
 
 The documented and CI-tested environment is POSIX with Python 3.12 or newer
@@ -32,25 +34,23 @@ filesystem operations; Windows file-output support is unavailable. For developme
 clone the repository and run `poetry install`, then prefix CLI commands with
 `poetry run`. A pip installation runs the installed CLI from its environment.
 
-The `BacktestClient` Python API below is an **unreleased preview** on the
-[`feat/public-python-api` branch](https://github.com/changelia/strategy-backtest-agent/tree/feat/public-python-api).
-It is not included in the released v1.1.0 pip distribution. To try the preview, use
-the feature branch source with Poetry:
+After the reviewed release change is merged, and until its v1.2.0 upload is verified,
+the API can be run from the main source checkout with Poetry:
 
 ```bash
-git clone --branch feat/public-python-api https://github.com/changelia/strategy-backtest-agent.git
+git clone https://github.com/changelia/strategy-backtest-agent.git
 cd strategy-backtest-agent
 poetry install
 ```
 
 The [CLI Quick Start and Research Tutorial](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/QUICK_START.md)
-has a complete installed-source workflow. The [Python API reference](https://github.com/changelia/strategy-backtest-agent/blob/feat/public-python-api/docs/PYTHON_API.md)
-documents every client operation and runnable examples. These absolute GitHub links
-also work from the PyPI project page.
+has a complete installed-source workflow. The [Python API reference](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/PYTHON_API.md)
+documents every client operation and runnable example. These absolute GitHub links
+also work from the PyPI project page and remain valid after the release branch is removed.
 
 ## Python API quick start
 
-This preview example uses synthetic data, so the research and deterministic report
+This example uses synthetic data, so the research and deterministic report
 need no credentials or network access:
 
 ```python
@@ -68,10 +68,10 @@ report_json = client.report(result, format="json")
 
 The result remains typed and exposes the source metrics; reports are generated from
 the in-memory result without rerunning the backtest. See the [complete Python API
-guide](https://github.com/changelia/strategy-backtest-agent/blob/feat/public-python-api/docs/PYTHON_API.md)
+guide](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/PYTHON_API.md)
 for comparisons, validation, sensitivity, costs, Walk-Forward, parsing, async calls,
-safe saving, templates, and diagnostics. The released v1.1.0 package currently
-provides the CLI; use the feature-branch instructions above for `BacktestClient`.
+safe saving, templates, and diagnostics. The v1.2.0 pip command above becomes usable
+after publication is verified.
 
 ## CLI quick start
 
@@ -133,8 +133,8 @@ the distinction between raw result JSON and report JSON.
 Comparison, validation, and Walk-Forward config commands above use synthetic offline
 data. The current sensitivity and cost-scenario CLI commands fetch Binance candles
 and require network access; they do not have a `--demo` option. Their deterministic
-calculations can still be exercised offline through the preview `BacktestClient`
-using `demo=True` as shown in the [Python API guide](https://github.com/changelia/strategy-backtest-agent/blob/feat/public-python-api/docs/PYTHON_API.md).
+calculations can still be exercised offline through `BacktestClient` using
+`demo=True` as shown in the [Python API guide](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/PYTHON_API.md).
 
 Comparison fetches data once and keeps each strategy's portfolio separate. Its excess
 return is strategy return minus net Buy & Hold return, in percentage points. Validation
@@ -233,8 +233,8 @@ CLI parsing and optional report interpretation make OpenAI API requests and may 
 charges. The `ai` strategy command also fetches Binance history. Structured CLI configs,
 `--demo`, deterministic reports, templates, and `doctor` work without OpenAI credentials.
 Doctor checks only whether a nonempty key is configured; it does not verify the key or
-provider availability. Never commit credentials. Python clients on the preview branch
-do not load `.env` automatically; use `dotenv_path=` to opt in.
+provider availability. Never commit credentials. Python clients do not load `.env`
+automatically; use `dotenv_path=` to opt in.
 
 ## Development
 

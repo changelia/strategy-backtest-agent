@@ -28,7 +28,7 @@ def isolated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY")
     monkeypatch.setenv("OPENAI_MODEL", "")
     monkeypatch.delenv("OPENAI_MODEL")
-    monkeypatch.setattr(doctor, "installed_metadata", lambda: ("1.1.0", ">=3.12,<4.0"))
+    monkeypatch.setattr(doctor, "installed_metadata", lambda: ("1.2.0", ">=3.12,<4.0"))
     monkeypatch.setattr(doctor, "source_metadata", lambda: (None, None))
     monkeypatch.setattr(
         doctor,
@@ -212,11 +212,11 @@ def test_stale_installed_version_is_distinct_from_source(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setattr(doctor, "installed_metadata", lambda: ("0.7.0", ">=3.12,<4.0"))
-    monkeypatch.setattr(doctor, "source_metadata", lambda: ("1.1.0", ">=3.12,<4.0"))
+    monkeypatch.setattr(doctor, "source_metadata", lambda: ("1.2.0", ">=3.12,<4.0"))
     assert run(monkeypatch) == 0
     output = capsys.readouterr().out
     assert "Installed package version: 0.7.0" in output
-    assert "Source checkout version: 1.1.0" in output
+    assert "Source checkout version: 1.2.0" in output
     assert "stale/editable metadata" in output
 
 
@@ -244,7 +244,7 @@ def test_incompatible_python_fails(
 def test_unrecognized_requirement_is_not_claimed_compatible(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(doctor, "installed_metadata", lambda: ("1.1.0", SECRET))
+    monkeypatch.setattr(doctor, "installed_metadata", lambda: ("1.2.0", SECRET))
     assert run(monkeypatch) == 1
     output = capsys.readouterr()
     assert SECRET not in output.out + output.err
@@ -310,11 +310,11 @@ def test_source_metadata_uses_module_checkout_not_cwd(
     module.parent.mkdir(parents=True)
     module.touch()
     (checkout / "pyproject.toml").write_text(
-        '[project]\nname="strategy-backtest-agent"\nversion="1.1.0"\nrequires-python=">=3.12,<4.0"'
+        '[project]\nname="strategy-backtest-agent"\nversion="1.2.0"\nrequires-python=">=3.12,<4.0"'
     )
     (tmp_path / "pyproject.toml").write_text(SECRET)
     monkeypatch.setattr(doctor, "__file__", str(module))
-    assert REAL_SOURCE() == ("1.1.0", ">=3.12,<4.0")
+    assert REAL_SOURCE() == ("1.2.0", ">=3.12,<4.0")
     monkeypatch.setattr(
         doctor, "__file__", str(tmp_path / "env/site-packages/strategy_backtest_agent/doctor.py")
     )

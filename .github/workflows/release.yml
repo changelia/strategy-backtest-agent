@@ -49,7 +49,7 @@ jobs:
           shasum -a 256 ./*.whl ./*.tar.gz > SHA256SUMS
       - uses: actions/upload-artifact@v5
         with:
-          name: validated-v1.1.0-distributions
+          name: validated-distributions
           path: ${{ runner.temp }}/release-validation/artifacts/*
           if-no-files-found: error
           retention-days: 14
@@ -82,7 +82,7 @@ jobs:
         run: python tests/release_gate.py publish
       - uses: actions/download-artifact@v6
         with:
-          name: validated-v1.1.0-distributions
+          name: validated-distributions
           path: ${{ runner.temp }}/release-artifacts
       - name: Verify the exact validated files
         run: |

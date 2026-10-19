@@ -8,24 +8,27 @@ interpretation call OpenAI and may incur charges.
 
 ## Installation and client configuration
 
-The released v1.1.0 CLI is installed with pip:
+The released v1.1.0 distribution provides the CLI. The v1.2.0 candidate adds
+`BacktestClient` while preserving that CLI. **PyPI publication of v1.2.0 is pending**;
+verify the release upload before installing it. After publication, install the API and
+CLI together with:
 
 ```bash
-python -m pip install strategy-backtest-agent==1.1.0
+python -m pip install strategy-backtest-agent==1.2.0
 ```
 
-That release does not include the `BacktestClient` API described here. The API is an
-unreleased preview on `feat/public-python-api`. To install the preview from source,
-use Python 3.12 or newer, Poetry, and the documented POSIX platform:
+After the reviewed release change is merged, and until publication is verified, use
+Python 3.12 or newer, Poetry, and the documented POSIX platform to install the main
+source checkout:
 
 ```bash
-git clone --branch feat/public-python-api https://github.com/changelia/strategy-backtest-agent.git
+git clone https://github.com/changelia/strategy-backtest-agent.git
 cd strategy-backtest-agent
 poetry install
 poetry run python -c 'from strategy_backtest_agent import BacktestClient; print(BacktestClient())'
 ```
 
-`BacktestClient()` uses the preview source environment. To configure an AI-enabled
+`BacktestClient()` uses the installed source environment. To configure an AI-enabled
 client explicitly, supply `api_key="<your OpenAI API key>"` and optionally
 `model="gpt-4.1-mini"`. No real credentials belong in examples or source control.
 
@@ -257,7 +260,8 @@ strategy-backtest doctor
 Without `--demo`, research fetches Binance history. `strategy-backtest ai "..."`
 uses OpenAI to parse a natural-language strategy and may incur charges. In a Poetry
 checkout, prefix commands with `poetry run`. This CLI example describes the released
-v1.1.0 command line; the API preview is separately installed from its feature branch.
+v1.1.0 command line and the matching CLI in the v1.2.0 candidate. The `BacktestClient`
+API ships in the v1.2.0 package after publication is verified.
 
 ## Supported rules, execution, and limitations
 

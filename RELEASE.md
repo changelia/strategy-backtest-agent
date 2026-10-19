@@ -1,19 +1,22 @@
-# v1.1.0 release candidate procedure
+# v1.2.0 release procedure
 
-This document describes a proposed, owner-controlled release procedure. The current
-branch is an unreleased candidate. No PyPI upload, GitHub tag, release, or external
-publisher/environment configuration is part of preparing it.
+Version `1.2.0` is prepared for review. **PyPI publication is pending verification**;
+no upload is performed during candidate preparation. The candidate contains the public
+Python API and preserves the released CLI, financial calculations, report schemas,
+and runtime dependency policy.
 
-## Local and GitHub dry run
+## Local checks and non-publishing dry run
 
-Run the repository quality checks, then dispatch **Release distributions** from the
-`release/v1.1.0` branch with `publish` left `false`. The workflow builds a wheel and
-source archive in an isolated packaging environment, checks strict metadata and
-archive contents, installs each artifact into a clean environment, and runs the
-offline doctor, all init templates, demo, and deterministic JSON/Markdown report
-checks. It uploads the validated artifacts and SHA256 manifest to that workflow run.
-It has no publication job on branch dispatch. A push of a `v*` tag runs those same
-checks only; it never publishes by itself.
+Run the quality checks locally, then manually dispatch **Release distributions** from
+`release/v1.2.0` with `publish` set to `false`. That path builds and validates the
+wheel and source distribution, installs each into a clean environment, runs the
+installed offline smoke checks, and saves the validated artifacts and SHA256 manifest
+to that workflow run. The artifact name is version-neutral: `validated-distributions`.
+This dispatch does not grant OIDC publication permission or call the upload action.
+
+A push of a matching `v*` tag runs build and validation only. It does not publish.
+Only a manual dispatch on a version tag with `publish=true`, after the validation job
+passes and the protected `pypi` environment is approved, can reach the publishing job.
 
 ```bash
 poetry run pytest -q
@@ -23,20 +26,14 @@ poetry run mypy
 poetry check --lock
 ```
 
-Do not use a local dry run as evidence that GitHub OIDC or a PyPI upload works.
-Those operations require owner configuration and a later explicitly authorized
-tagged dispatch.
+A local dry run cannot verify GitHub OIDC identity exchange, environment approval, or
+a real PyPI upload.
 
-## Required owner configuration before publication
+## Required external settings
 
-The owner reports creating a PyPI account, but account ownership and publisher
-configuration have not been verified. First confirm the account and project owner.
-The official project JSON endpoint for normalized name `strategy-backtest-agent`
-returned HTTP 404 at `2026-10-18T19:19:44Z`; this says only that public project
-metadata was absent then. It does not reserve the name or prove that it can be
-registered. A pending publisher also does not reserve an uncreated project name.
-
-In the owning PyPI account, configure the Trusted Publisher for:
+The `strategy-backtest-agent` project is present on PyPI at v1.1.0. Before publishing,
+the project owner must confirm account access and configure or verify its Trusted
+Publisher settings:
 
 | Setting | Value |
 | --- | --- |
@@ -46,60 +43,54 @@ In the owning PyPI account, configure the Trusted Publisher for:
 | Workflow file | `release.yml` |
 | GitHub environment | `pypi` |
 
-If the project does not exist, create a pending publisher with those exact values;
-the first valid OIDC upload can create the project, subject to name availability.
-If the project exists, use its Publishing settings and verify the account has the
-required project-owner permission. Do not create an API token for this workflow.
+In GitHub repository Settings → Environments, verify the `pypi` environment requires
+release-owner approval, prevents self-review, and restricts deployments to intended
+version tags. Add or verify a `v*` tag ruleset limiting tag creation, updates, and
+deletion to authorized release administrators. A workflow tag filter alone does not
+restrict who can create tags. Do not add an API-token secret; the workflow uses OIDC.
 
-In GitHub repository Settings → Environments, create `pypi`. Require approval from
-an appropriate release owner, enable prevention of self-review, and restrict
-deployments to the intended `v*` tags. Confirm any available administrator bypass
-policy is appropriate. Add a repository tag ruleset for `v*` that limits tag
-creation, updates and deletion to authorized release administrators. A workflow
-tag filter alone does not control who can create a matching tag. Verify the PyPI
-publisher and GitHub environment values match exactly before enabling publication.
+The official [PyPI project metadata](https://pypi.org/pypi/strategy-backtest-agent/json)
+showed v1.1.0 during preparation. This confirms an existing public project, not the
+current Trusted Publisher configuration or permission of the intended release owner.
 
-## Future publication boundary
+## Publication sequence after review
 
-These steps are future work and are not verified by this candidate:
+1. Review and approve the release commit. Merge it to `main` through the normal
+   repository process, then confirm the required `main` checks pass.
+2. Create and push an **annotated** `v1.2.0` tag at that exact `main` commit using the
+   authorized release process. Its tag-push run validates but cannot publish.
+3. Confirm that validation run succeeds and the external `pypi` settings above are
+   correct. Manually dispatch **Release distributions** on ref `v1.2.0` with
+   `publish=true`, then approve the protected environment. The publish gate checks
+   the annotated tag, package-version match, and that workflow checkout, tag commit,
+   and fetched `origin/main` are the same commit. It checks `SHA256SUMS` and uploads
+   the already-validated artifacts; it does not rebuild them.
+4. Treat a name/version conflict or failed upload as a release failure. The workflow
+   has no API-token fallback and does not use `skip-existing`.
 
-1. Review and merge the candidate through the repository's normal approval and CI
-   process. Confirm `main` contains the reviewed release commit and required checks
-   pass.
-2. Create and push an annotated `v1.1.0` tag at that exact `main` commit, only by an
-   authorized release owner. The tag push runs validation but cannot publish.
-3. After confirming the validation run succeeded and external settings are correct,
-   manually dispatch **Release distributions** with ref `v1.1.0` and `publish=true`.
-   Approve the protected `pypi` environment. The publishing job checks the tag is
-   annotated, the tag matches `pyproject.toml`, and the tag, workflow checkout and
-   fetched `origin/main` point to the exact same commit. It verifies the SHA256
-   manifest and uploads the already-validated wheel and sdist without rebuilding.
-4. Treat a PyPI conflict or failed upload as a release failure. The workflow does
-   not use `skip-existing` or an API-token fallback.
-
-The publication job is limited to a manual tagged dispatch and is skipped for pull
-requests, branch pushes, tag pushes, and dispatches with `publish=false`. Its
-`id-token: write` permission is job-scoped; the build job and workflow default have
-only `contents: read`.
+The workflow is limited to a manual tagged dispatch for publication. Ordinary
+pull-request and branch work, tag pushes, and dispatches with `publish=false` cannot
+upload. `id-token: write` is limited to the publishing job; workflow defaults and the
+build/validation job retain read-only contents permission.
 
 ## Post-publication verification
 
-After a future successful upload, an owner should:
+After the upload completes, the release owner should:
 
-1. Confirm the official PyPI project page and JSON metadata show exactly version
-   `1.1.0` and the intended project links.
+1. Verify the official PyPI page and JSON metadata report exactly `1.2.0` and the
+   expected project links.
 2. Download the wheel and sdist from PyPI and compare their SHA256 hashes with the
-   successful workflow run's `SHA256SUMS` artifact.
-3. In a fresh virtual environment, install the exact version with
-   `python -m pip install strategy-backtest-agent==1.1.0`, run `pip check`, then run
-   `strategy-backtest doctor`, `strategy-backtest --demo`, and offline JSON and
-   Markdown report smoke checks without credentials.
-4. Verify GitHub `main` and dereferenced `v1.1.0` tag point to the intended same
-   commit, and confirm both validation and publication Actions runs succeeded.
+   successful publishing workflow's `SHA256SUMS` artifact.
+3. In a fresh virtual environment, install
+   `python -m pip install strategy-backtest-agent==1.2.0`, run `pip check`, and verify
+   `strategy-backtest doctor`, `strategy-backtest --demo`, public `BacktestClient`
+   import, offline backtest, and deterministic JSON/Markdown reports without
+   credentials.
+4. Verify `main` and dereferenced `v1.2.0` point to the same commit and confirm both
+   the tag-validation and publishing GitHub Actions runs succeeded.
 
-These checks are future verification steps, not evidence completed for this
-candidate. OIDC identity exchange, environment approval and a real PyPI upload have
-not been tested locally.
+These are future release checks, not completed evidence for this candidate. No
+GitHub merge, tag, OIDC publication, or PyPI upload is part of preparation.
 
 ## Official guidance
 

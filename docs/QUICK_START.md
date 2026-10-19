@@ -30,9 +30,10 @@ CLI="$WORKDIR/venv/bin/strategy-backtest"
 `pip install "$REPO"` installs the checked-out source as a normal distribution;
 the resulting CLI runs from the virtual environment's `bin` directory. For project
 development, use `poetry install` in the checkout and prefix commands with
-`poetry run`. This project is not confirmed published on PyPI. After publication,
-`python -m pip install strategy-backtest-agent` is the expected package command, but
-it is not a verified installation route today.
+`poetry run`. The v1.1.0 CLI release is available on PyPI. Version 1.2.0 adds the
+public Python API while preserving the CLI; its PyPI publication is pending
+verification. After publication, install it with
+`python -m pip install strategy-backtest-agent==1.2.0`.
 
 ## First offline backtest and report
 

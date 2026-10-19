@@ -1,6 +1,28 @@
 # Changelog
 
-## v1.1.0 — Release candidate (unreleased)
+## v1.2.0 — Public Python API (publication pending)
+
+### Added
+
+- Stable root-level `BacktestClient` API for backtest, comparison, chronological
+  validation, parameter sensitivity, execution-cost scenarios and Walk-Forward.
+- Typed in-memory research results, summaries, strict serialization, and direct
+  deterministic Markdown/JSON report generation without rerunning research.
+- Public configuration/result/exception imports, validated templates, structured
+  offline diagnostics, synchronous and awaitable operations, and isolated per-client
+  AI settings with explicit optional dotenv loading.
+- Python API documentation and README examples alongside the preserved v1.1.0 CLI.
+
+### Compatibility and release status
+
+- Existing CLI commands, financial calculations, research schemas, report schemas,
+  and runtime dependencies are unchanged.
+- Package metadata is set to `1.2.0`. PyPI publication is pending; install the
+  version only after the release upload and metadata have been verified.
+- The Python API uses the existing providers and research engines. It adds no new
+  indicators, trading features, optimization, or live execution.
+
+## v1.1.0 — CLI Setup and Packaging
 
 ### Added
 
@@ -8,16 +30,9 @@
   walk-forward research; offline `doctor` diagnostics; and the Quick Start tutorial.
 - Automated distribution build, strict metadata/archive validation, isolated
   installation and offline CLI/report checks in GitHub Actions.
-- A separately gated, opt-in PyPI Trusted Publishing workflow. The candidate
-  requires owner-configured GitHub environment protection and PyPI OIDC publisher
-  settings before publication. No upload is performed while preparing this candidate.
-
-### Release candidate scope
-
-- Package metadata is set to `1.1.0`; this version is not yet published or tagged.
-- No backtesting calculations, report schema versions, or runtime dependencies changed.
-- The PyPI namespace was observed without public project metadata at the audit time;
-  this does not guarantee name availability or account ownership.
+- A separately gated, opt-in PyPI Trusted Publishing workflow. During candidate
+  preparation, publication required owner-configured GitHub environment protection
+  and PyPI OIDC publisher settings; preparation itself did not upload distributions.
 
 ## v1.0.0 — Evidence-Grounded AI Research Reports
 
