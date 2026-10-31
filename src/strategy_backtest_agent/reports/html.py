@@ -172,7 +172,7 @@ def validate_report(report: ResearchReport) -> ResearchReport:
 
 
 def text(value: object) -> str:
-    return escape(str(value), quote=True)
+    return escape(str(value).replace("\r\n", "\n").replace("\r", "\n"), quote=True)
 
 
 def utc(value: datetime | None) -> str:

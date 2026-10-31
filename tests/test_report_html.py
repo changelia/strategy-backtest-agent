@@ -398,3 +398,13 @@ def test_each_chart_has_an_adjacent_exact_value_table(report: ResearchReport) ->
     rendered = html(report)
     assert rendered.count("Chart values · panel") == rendered.count("<svg ")
     assert "scroll the chart horizontally" in rendered
+
+
+def test_source_crlf_is_presented_as_lf_without_changing_evidence(report: ResearchReport) -> None:
+    report.evidence.source_notes.append("First\r\nSecond\rThird")
+    report = rehash(report)
+    before = report.model_dump_json()
+    rendered = html(report)
+    assert "\r" not in rendered
+    assert "First\nSecond\nThird" in rendered
+    assert report.model_dump_json() == before
