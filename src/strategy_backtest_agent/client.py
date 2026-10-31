@@ -55,7 +55,7 @@ from strategy_backtest_agent.walk_forward.engine import fetch_and_walk_forward, 
 from strategy_backtest_agent.walk_forward.formatter import format_walk_forward
 from strategy_backtest_agent.walk_forward.models import WalkForwardConfig, WalkForwardReport
 
-ReportFormat = Literal["markdown", "json"]
+ReportFormat = Literal["markdown", "json", "html"]
 Workflow = Literal["backtest", "compare", "validate", "sensitivity", "walk-forward"]
 ResearchValue = (
     CLIBacktest
@@ -572,6 +572,8 @@ class BacktestClient:
         ai: bool = False,
     ) -> str:
         """Render an existing typed result, mapping, report, or JSON file; never reruns."""
+        if format == "html" and ai:
+            raise BacktestClientError("HTML reports do not support AI requests; render offline")
         if ai:
             try:
                 asyncio.get_running_loop()
@@ -602,8 +604,12 @@ class BacktestClient:
                 from strategy_backtest_agent.reports.render import markdown
 
                 rendered = markdown(report)
+            elif format == "html":
+                from strategy_backtest_agent.reports.html import html
+
+                rendered = html(report)
             else:
-                raise BacktestClientError("format must be 'markdown' or 'json'")
+                raise BacktestClientError("format must be 'markdown', 'json' or 'html'")
             if output is not None:
                 try:
                     write_new(Path(output), rendered)

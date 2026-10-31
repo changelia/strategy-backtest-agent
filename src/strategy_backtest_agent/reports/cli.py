@@ -64,7 +64,7 @@ def main(argv: list[str] | None = None) -> None:
         description="Render one validated v0.9 research JSON without executing a backtest",
     )
     parser.add_argument("--input", required=True, type=Path)
-    parser.add_argument("--format", choices=("markdown", "json"), default="markdown")
+    parser.add_argument("--format", choices=("markdown", "json", "html"), default="markdown")
     parser.add_argument(
         "--output", type=Path, help="Create a new report; existing paths are never overwritten"
     )
@@ -75,6 +75,8 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
     try:
+        if args.format == "html" and args.ai:
+            raise ValueError("HTML reports do not support AI requests; render offline")
         if args.output is not None and os.path.lexists(args.output):
             raise ValueError("output already exists; choose a new filename (no overwrite)")
         report = build_report(read_input(args.input))
@@ -82,7 +84,12 @@ def main(argv: list[str] | None = None) -> None:
             from strategy_backtest_agent.reports.ai import interpret
 
             report = interpret(report)
-        content = report.model_dump_json() + "\n" if args.format == "json" else markdown(report)
+        if args.format == "html":
+            from strategy_backtest_agent.reports.html import html
+
+            content = html(report)
+        else:
+            content = report.model_dump_json() + "\n" if args.format == "json" else markdown(report)
         if args.output is None:
             print(content, end="")
         else:
