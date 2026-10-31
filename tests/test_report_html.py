@@ -392,3 +392,9 @@ def test_cached_ai_bad_references_rejected(report: ResearchReport, change: str) 
     cached.ai_interpretation.statements[0] = statement
     with pytest.raises(ValueError):
         html(cached)
+
+
+def test_each_chart_has_an_adjacent_exact_value_table(report: ResearchReport) -> None:
+    rendered = html(report)
+    assert rendered.count("Chart values · panel") == rendered.count("<svg ")
+    assert "scroll the chart horizontally" in rendered

@@ -40,8 +40,10 @@ border:1px solid #8aa6af;border-radius:20px;font-size:.85rem}table{border-collap
 width:100%;font-size:.875rem;table-layout:fixed}th,td{text-align:left;vertical-align:top;
 padding:10px 12px;border-bottom:1px solid #dce4e8;overflow-wrap:anywhere}
 th{color:#334e5f;background:#f0f5f7}caption{text-align:left;padding:12px 0;font-weight:600}
-code{font-size:.85em;overflow-wrap:anywhere}dl{display:grid;grid-template-columns:180px 1fr;
-gap:8px 16px}dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}svg{display:block;
+code{font-size:.85em;overflow-wrap:anywhere}dl{display:grid;
+grid-template-columns:minmax(0,180px) minmax(0,1fr);
+gap:8px 16px}dt{font-weight:600;overflow-wrap:anywhere;min-width:0}
+dd{margin:0;overflow-wrap:anywhere}svg{display:block;
 width:100%;height:auto;min-width:0}svg text{font:12px system-ui,sans-serif;fill:#172b3a}
 .axis{stroke:#738a98;stroke-width:1}.strategy{fill:#087e83}.benchmark{fill:#586aaf}
 .drawdown{fill:#a54d25}.cost{fill:#7b548d}.zero{stroke:#172b3a;stroke-width:2}
@@ -310,11 +312,25 @@ def charts(
             displayed = "N/A (undefined)" if metric.value is None else f"{metric.value:.4g} {unit}"
             doc.add(f'<text x="610" y="{y}">{text(displayed)}</text>')
         doc.add(
-            '</svg></div><p class="muted">Linear magnitude scale shared across these panels; '
+            '</svg></div><p class="muted">On narrow screens, scroll the chart horizontally. '
+            "Exact values are also listed directly below. Linear magnitude scale shared "
+            "across these panels; "
             f"maximum magnitude {text(scale)} {text(unit)}. Null values have no mark. "
             "Exact values, labels, units and source paths are in the evidence "
             "tables.</p></figure>\n"
         )
+        doc.add(
+            "<table><caption>Chart values · panel "
+            f"{panel_id}</caption><thead><tr><th>Scope / metric</th>"
+            "<th>Exact value</th><th>Unit</th></tr></thead><tbody>"
+        )
+        for number, metric in rows:
+            doc.add(
+                f"<tr><td>R{number} · {text(metric.name)}<br>"
+                f"<code>{text(metric.id)}</code></td>"
+                f"<td>{text(value_text(metric.value))}</td><td>{text(metric.unit)}</td></tr>"
+            )
+        doc.add("</tbody></table>\n")
     return panel_id
 
 
