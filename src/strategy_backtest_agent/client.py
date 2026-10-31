@@ -348,16 +348,12 @@ class BacktestClient:
             strategy=strategy,
             evaluation_end=evaluation_end,
         )
-        if ai_context is None:
-            source = backtest_json(execution)
-            result = CLIBacktest.model_validate_json(source)
-        else:
-            from strategy_backtest_agent.services import backtest_payload
-
-            result = CLIBacktest.model_validate(backtest_payload(execution))
+        source = backtest_json(execution)
+        result = CLIBacktest.model_validate_json(source)
+        if ai_context is not None:
             source = (
                 json.dumps(
-                    {**ai_context, "backtest_result": backtest_payload(execution)},
+                    {**ai_context, "backtest_result": json.loads(source)},
                     allow_nan=False,
                 )
                 + "\n"
