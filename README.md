@@ -59,9 +59,11 @@ The output shows the validated configuration followed by historical synthetic me
 The two new reports appear in the directory where you run Python. Use a new directory
 or new filenames when repeating: report writers refuse overwrites. Configuring a key
 alone makes no request. `parse()` uses paid OpenAI; `demo=True` makes only the subsequent
-execution offline. Omit `demo=True` to fetch Binance history instead. Direct natural-language convenience calls also use paid AI. The current single-run
-DSL convenience path has a [known validation issue](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/AI.md#direct-natural-language-execution);
-use the explicit parse-then-config path above for reliable DSL execution.
+execution offline. Omit `demo=True` to fetch Binance history instead. Direct natural-language
+convenience calls also use paid AI. Published versions **1.2.0 / 1.2.1** have a
+[direct DSL timestamp validation defect](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/AI.md#direct-natural-language-execution);
+use the parse-then-config path above with those versions. The fix is in source and
+**not yet published**; the unpinned pip command does not yet install the correction.
 
 For environment variables, `.env`, inspection, and terminal AI workflows, see the
 [AI guide](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/AI.md).

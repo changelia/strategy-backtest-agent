@@ -2,8 +2,9 @@
 
 This is a maintainer checklist for the customer guides. Contracts were inspected in
 the root exports, client, models, all CLI parsers, init/doctor, report renderer and
-installed smoke helpers. Implemented/published baseline: package v1.2.0; these guide
-changes do not change runtime behavior or already-uploaded PyPI descriptions.
+installed smoke helpers. The original documentation review used published v1.2.0.
+Published 1.2.0 / 1.2.1 have the direct DSL defect described below. Source now includes
+an unreleased correction; it does not change already-uploaded PyPI descriptions.
 
 ## Public client operations
 
@@ -78,11 +79,28 @@ in `client.arun` rejects string timestamps in `evaluation_period` because the ne
 model is strict. `run(config=parsed_config, demo=True)` uses JSON-mode validation and
 succeeds with the same strategy; direct legacy RSI succeeds without that metadata.
 
-Smallest proposed runtime correction for a separate task: validate the serialized
-payload in JSON mode consistently with the config path, retaining the original AI
-source envelope, financial values and report metadata; add a direct RuleStrategy
-natural-language regression. No runtime fix is included here. This remains a product
-blocker for claiming universal direct natural-language single-strategy parity.
+The original documentation-only task proposed a separate runtime correction. That
+correction is now implemented in source and **not yet published**: both paths validate
+the same serialized payload in strict JSON mode, and direct execution retains the
+original AI source envelope. Published 1.2.0 / 1.2.1 remain affected; pip does not yet
+install the correction. The review and release evidence below is historical.
+
+Current regression coverage:
+
+- `tests/test_direct_dsl_client.py`: complete validated customer RuleStrategy config,
+  mocked parser, sync/async demo, fixed-end offline custom provider, legacy RSI,
+  full result/config parity (including financial values, costs and provenance),
+  typed UTC boundaries and original input/parsed-strategy/result envelope.
+- Direct and saved-source JSON/Markdown reports repeat deterministically for identical
+  source bytes. Different source envelopes may legitimately produce different hashes.
+- Strict Python timestamp rejection, invalid/naive JSON timestamps and numeric-string
+  rejection remain covered, alongside the existing malformed-input/security suite.
+- `tests/installed_smoke.py`: fresh installed wheel and sdist outside the checkout,
+  mocked direct DSL sync/async execution, explicit-config parity and repeated direct
+  and saved-source reports under the application socket guard.
+
+Runtime dependencies, package version and report schemas remain unchanged. No paid
+OpenAI or live Binance request is used for these checks.
 
 ## Review and validation record
 

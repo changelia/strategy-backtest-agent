@@ -158,32 +158,41 @@ Expected: a two-strategy comparison summary and one new Markdown report. Without
 execution also fetches Binance history. Direct `validate`, `sensitivity` and
 `walk_forward` calls similarly accept requests; costs is config-only.
 
-**Known v1.2.0 single-run issue:** `client.run(text, demo=True)` fails when the parser
-returns a DSL `RuleStrategy`: strict Python validation rejects the serialized
-`evaluation_period.requested_start/end` timestamps. Direct legacy RSI output does not
-have those fields, so it can succeed. Do not rely on the AI selecting a legacy shape.
-The recommended single-strategy route is `parse()` followed by `run(config=config)`
-from the previous section; that path preserves the same rules and avoids the defect.
-A complete diagnostic example of the convenience call (paid parsing):
+**Published versions 1.2.0 / 1.2.1:** direct `run(text, demo=True)` and
+`await arun(text, demo=True)` fail when parsing returns a DSL `RuleStrategy`.
+Strict Python validation rejects serialized `evaluation_period.requested_start/end`
+timestamps. The same defect can occur without demo. Direct legacy RSI output lacks
+those fields and can succeed; do not rely on the AI selecting a legacy shape.
+Use `parse()` followed by `run(config=config)` from the previous section with the
+affected releases. This preserves the rules and avoids the defect.
+
+**Fixed source, not yet published:** direct execution now validates the serialized
+backtest in JSON mode, consistently with explicit-config execution. Strict schemas,
+typed UTC evaluation boundaries, original AI source envelope, financial values,
+execution assumptions and provenance are preserved. Direct JSON/Markdown reports
+also work. The customer pip installation command remains unpinned and does not yet
+install this correction.
+
+The following convenience example requires the fixed source and uses paid parsing;
+`demo=True` keeps only the subsequent calculation offline:
 
 ```python
-from strategy_backtest_agent import BacktestClient, ValidationError
+from strategy_backtest_agent import BacktestClient
 
 client = BacktestClient()
-try:
-    result = client.run(
-        "Backtest BTCUSDT on 1h for 30 days. Buy when price is below the lower "
-        "Bollinger Band (20,2) and sell when price is above the middle band.",
-        demo=True,
-    )
-    print(result.summary())
-except ValidationError:
-    print("Known direct DSL validation issue: use parse(), then run(config=parsed_config).")
+result = client.run(
+    "Backtest BTCUSDT on 1h for 30 days. Buy when price is below the lower "
+    "Bollinger Band (20,2) and sell when price is above the middle band.",
+    demo=True,
+)
+print(result.summary())
+result.save_report("direct-backtest.md")
+result.save_report("direct-backtest-report.json", format="json")
 ```
 
-The error is a product defect, not an invalid strategy or a reason to edit source
-metrics. No runtime fix is included in this documentation-only work. This example
-intentionally diagnoses the limitation; it does not claim a successful backtest.
+The published-version error is a product defect, not an invalid strategy or a reason
+to edit source metrics. Offline regression tests mock parsing; they do not establish
+live OpenAI availability or validate the output of a real model.
 
 ## Other research modes
 

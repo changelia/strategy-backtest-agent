@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Direct natural-language `BacktestClient.run` / `arun` with `RuleStrategy` now
+  validate serialized evaluation timestamps in strict JSON mode, consistently with
+  explicit-config execution. Reuse the serialized payload while retaining the
+  original AI source envelope, financial values, execution assumptions and provenance.
+- Offline regression coverage includes sync/async demo, fixed-end custom providers,
+  legacy RSI, typed UTC boundaries, direct/saved-source deterministic JSON/Markdown
+  reports, strict rejection and isolated installed wheel/sdist smoke checks.
+
+Published **1.2.0 / 1.2.1** remain affected. This fix is in source, **not yet
+published**; unpinned pip installation does not yet install it. Package version,
+runtime dependencies and report schemas are unchanged. The v1.2.1 candidate record
+below preserves its original pre-publication status and defect evidence.
+
 ## v1.2.1 — Customer Documentation (publication pending)
 
 ### Changed
