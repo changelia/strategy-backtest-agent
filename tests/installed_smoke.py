@@ -138,6 +138,52 @@ print(json.dumps({
 """
 
 
+DIRECT_DSL_PROBE = r"""
+import asyncio, hashlib, json, pathlib, sys
+from datetime import datetime, timedelta
+from unittest.mock import patch
+from strategy_backtest_agent import AIStrategyConfig, BacktestClient
+from strategy_backtest_agent.reports.inputs import CLIBacktest
+config = AIStrategyConfig.model_validate_json(pathlib.Path(sys.argv[1]).read_bytes())
+client = BacktestClient(api_key='')
+with patch('strategy_backtest_agent.ai.parser.parse_strategy', return_value=config) as parser:
+    direct = client.run('test', demo=True)
+    awaited = asyncio.run(client.arun('test', demo=True))
+    assert parser.call_count == 2
+explicit = client.run(config=config, demo=True)
+assert isinstance(direct.data, CLIBacktest)
+assert direct.data == awaited.data == explicit.data
+assert direct.data.execution == config.execution_config()
+source = json.loads(direct.to_json())
+assert source['input'] == 'test'
+assert source['parsed_strategy'] == config.model_dump(mode='json')
+assert source['backtest_result'] == json.loads(explicit.to_json())
+period = direct.data.evaluation_period
+assert period is not None
+for boundary in (period.requested_start, period.requested_end):
+    assert isinstance(boundary, datetime)
+    assert boundary.tzinfo is not None and boundary.utcoffset() == timedelta(0)
+path = pathlib.Path('direct-dsl-source.json')
+path.write_text(direct.to_json(), encoding='utf-8')
+hashes = {}
+for format_name in ('json', 'markdown'):
+    report = client.report(direct, format=format_name)
+    assert report == client.report(awaited, format=format_name)
+    assert report == client.report(path, format=format_name)
+    assert report == client.report(path, format=format_name)
+    pathlib.Path('direct-dsl-report.' + format_name).write_text(report, encoding='utf-8')
+    hashes[format_name] = hashlib.sha256(report.encode()).hexdigest()
+assert json.loads(client.report(direct, format='json'))['evidence_sha256']
+assert client.report(direct).startswith('# Historical Strategy Research Report')
+print(json.dumps({'report_sha256': hashes,
+ 'source_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+ 'final_balance': direct.data.final_balance,
+ 'data_source': direct.data.data_source,
+ 'requested_start': period.requested_start.isoformat(),
+ 'requested_end': period.requested_end.isoformat()}))
+"""
+
+
 def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
     venv, work, checkout = venv.resolve(), work.resolve(), checkout.resolve()
     assert not work.is_relative_to(checkout) and not venv.is_relative_to(checkout)
@@ -245,6 +291,12 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
         api_receipt = json.loads(run([str(python), "-I", "-c", PUBLIC_API_PROBE]).stdout)
         assert api_receipt["offline_ready"] and not api_receipt["api_key_present"]
         (work / "public-api.json").write_text(json.dumps(api_receipt, allow_nan=False))
+        dsl_config = work / "customer-ai-strategy.json"
+        dsl_config.write_bytes((checkout / "examples/customer-ai-strategy.json").read_bytes())
+        dsl_receipt = json.loads(
+            run([str(python), "-I", "-c", DIRECT_DSL_PROBE, str(dsl_config)]).stdout
+        )
+        (work / "direct-dsl.json").write_text(json.dumps(dsl_receipt, allow_nan=False))
         init_templates = {}
         for kind in ("backtest", "compare", "validate", "walk-forward"):
             config = work / f"init-{kind}.json"
@@ -288,6 +340,7 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
                 "invalid_config_exit": doctor_bad.returncode,
             },
             "public_api": {
+                "direct_dsl": dsl_receipt,
                 "evidence_sha256": api_receipt["evidence_sha256"],
                 "input_content_sha256": api_receipt["input_content_sha256"],
                 "markdown_sha256": api_receipt["markdown_sha256"],
