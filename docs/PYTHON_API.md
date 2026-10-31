@@ -100,10 +100,10 @@ print(result.summary())
 
 `run(request, ...)` accepts a natural-language request and parses it before research.
 Published versions **1.2.0 / 1.2.1** have a [direct DSL timestamp validation defect](AI.md#direct-natural-language-execution);
-use separate `parse()` then `run(config=...)` with those versions. Fixed source uses
+use separate `parse()` then `run(config=...)` with those versions. The 1.2.2 candidate uses
 strict JSON validation consistently for `run` and `arun`, preserving typed UTC
-boundaries and the original input/parsed-strategy/result envelope. This correction
-is **not yet published**; installing with pip does not yet provide it.
+boundaries and the original input/parsed-strategy/result envelope. **Publication
+remains pending until verified**; installing with pip does not yet provide the correction.
 `run(config=...)` accepts the existing `BacktestConfig` or `AIStrategyConfig` model.
 Both may also receive mappings or JSON paths. Use `days=` only for a backtest template;
 parsed and `AIStrategyConfig` durations must agree with their configuration. `demo=True`

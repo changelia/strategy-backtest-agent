@@ -27,7 +27,9 @@ operations; Windows file output is unsupported. See the
 
 The distribution is `strategy-backtest-agent`, the Python import is
 `strategy_backtest_agent`, and the terminal executable is `strategy-backtest`.
-The published v1.2.0 package includes both the Python client and CLI.
+Published versions 1.2.0 and 1.2.1 include both the Python client and CLI.
+The 1.2.2 patch candidate fixes direct DSL timestamp validation; publication remains
+pending until verified. Customer installation and upgrade commands stay unpinned.
 
 ## Your first strategy with AI
 
@@ -62,8 +64,9 @@ alone makes no request. `parse()` uses paid OpenAI; `demo=True` makes only the s
 execution offline. Omit `demo=True` to fetch Binance history instead. Direct natural-language
 convenience calls also use paid AI. Published versions **1.2.0 / 1.2.1** have a
 [direct DSL timestamp validation defect](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/AI.md#direct-natural-language-execution);
-use the parse-then-config path above with those versions. The fix is in source and
-**not yet published**; the unpinned pip command does not yet install the correction.
+use the parse-then-config path above with those versions. The **1.2.2 candidate**
+contains the correction, with strict UTC types and the AI source envelope preserved.
+**Publication remains pending until verified**; pip does not yet install the correction.
 
 For environment variables, `.env`, inspection, and terminal AI workflows, see the
 [AI guide](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/AI.md).

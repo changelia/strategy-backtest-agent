@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v1.2.2 — Direct DSL Timestamp Validation (publication pending)
 
 ### Fixed
 
@@ -12,10 +12,12 @@
   legacy RSI, typed UTC boundaries, direct/saved-source deterministic JSON/Markdown
   reports, strict rejection and isolated installed wheel/sdist smoke checks.
 
-Published **1.2.0 / 1.2.1** remain affected. This fix is in source, **not yet
-published**; unpinned pip installation does not yet install it. Package version,
-runtime dependencies and report schemas are unchanged. The v1.2.1 candidate record
-below preserves its original pre-publication status and defect evidence.
+Published **1.2.0 / 1.2.1** remain affected. The **1.2.2 candidate** contains the fix;
+**publication remains pending until verified**. Unpinned pip installation does not
+yet provide this correction. Only package metadata and matching current-version
+fixtures change for release preparation; runtime dependencies, financial behavior
+and report schemas remain unchanged. The v1.2.1 candidate record below preserves
+its original pre-publication status and defect evidence.
 
 ## v1.2.1 — Customer Documentation (publication pending)
 
