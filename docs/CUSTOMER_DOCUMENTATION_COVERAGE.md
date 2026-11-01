@@ -3,9 +3,22 @@
 This is a maintainer checklist for the customer guides. Contracts were inspected in
 the root exports, client, models, all CLI parsers, init/doctor, report renderer and
 installed smoke helpers. The original documentation review used published v1.2.0.
-Published 1.2.0 / 1.2.1 have the direct DSL defect described below. The 1.2.2 candidate includes
-the correction; publication remains pending until verified. Already-uploaded PyPI
-descriptions are unchanged.
+Published 1.2.0 / 1.2.1 have the direct DSL defect described below; published 1.2.2
+contains the correction. Static HTML is unreleased source functionality and is not
+included in published 1.2.2. Historical verification records below remain intact.
+
+## Unreleased static HTML coverage
+
+Published pip 1.2.2 does not include HTML. Current source adds evidence-only HTML
+through report/areport/save_report and CLI `report --format html`, retaining existing
+Markdown/JSON contracts. [Python workflow](PYTHON_API.md#standalone-html-reports-unreleased),
+[CLI workflow](CLI.md#standalone-html-workflow-unreleased) and
+[browser evidence](evidence/static-html/README.md) cover raw-result saving, generation,
+file location/opening, chart interpretation, offline behavior and unavailable curves.
+
+Renderer/security, interface/writer and installed/browser checks are recorded in the
+browser evidence directory. The historical customer documentation/release records
+below remain unchanged as evidence of their original review.
 
 ## Public client operations
 
@@ -81,10 +94,11 @@ model is strict. `run(config=parsed_config, demo=True)` uses JSON-mode validatio
 succeeds with the same strategy; direct legacy RSI succeeds without that metadata.
 
 The original documentation-only task proposed a separate runtime correction. That
-correction is included in the **1.2.2 candidate, publication pending**: both paths validate
+correction is included in **published 1.2.2**: both paths validate
 the same serialized payload in strict JSON mode, and direct execution retains the
-original AI source envelope. Published 1.2.0 / 1.2.1 remain affected; pip does not yet
-install the correction. The review and release evidence below is historical.
+original AI source envelope. Published 1.2.0 / 1.2.1 remain affected; 1.2.2 fixes
+this defect, independently of the unreleased HTML feature. The review and release
+evidence below is historical.
 
 Current regression coverage:
 

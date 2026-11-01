@@ -1,0 +1,66 @@
+{
+  "status": "READY",
+  "artifacts": {
+    "strategy_backtest_agent-1.2.2-py3-none-any.whl": "482519df6b8bb9733f87c9e4b2de8fd80f94f6cd03760acd9ad29720fac1bd60",
+    "strategy_backtest_agent-1.2.2.tar.gz": "46cbbd366fcd5796711bae4197531af0fb764108ccdff347f1959d271afffece"
+  },
+  "installations": [
+    {
+      "kind": "wheel",
+      "status": "READY",
+      "version": "1.2.2",
+      "pip_check": "No broken requirements found.",
+      "network_attempts": 0,
+      "direct_url_sha256": "482519df6b8bb9733f87c9e4b2de8fd80f94f6cd03760acd9ad29720fac1bd60",
+      "html_sha256": {
+        "backtest": "3474721b0d536a5a3c632644336bef491222bbe98ca7511956387f4d06167ecf",
+        "comparison": "b410d66c0cd49919d51aeddc230ce8dffca6e1953bb6e64b41a304ea4b968b87",
+        "validation": "d5e737e197b92580b3fe6ede2e3163d1e23146c9621cf8d1aec55dbc595a6db0",
+        "sensitivity": "70d30dc50428f84a36b2c9a969f0108c2f4cd2f2cf8f63878e309b2fa83d68a2",
+        "costs": "2b9e0969ed9823893cf2cc6ef909c359b6e683ddb48417f4a9ed0601b5bb558c",
+        "walk_forward": "9b4ab4b8724805185e7f6390aad3960119af562b63b719e11bf0a7075dc70069"
+      },
+      "direct_dsl": {
+        "report_sha256": {
+          "json": "ae841a755cafac7da38b94786a8314a8c4f85d4e50ac9c8f861041cfbc64d508",
+          "markdown": "4d7eeb03c07fb282c64920b21391270e33e5e7fe6c81c2477149e86e35dc6de4",
+          "html": "299c63676c8efdbc6d9e7ae123917a4a83ded36f23b38ea3f20d8e6773a8c554"
+        },
+        "source_sha256": "e2298b5ba650fdd8489b5b85536ac6076b989381df4462baa11dc14f1368ff37",
+        "final_balance": 4148.260765607024,
+        "data_source": "synthetic_demo",
+        "requested_start": "2024-06-01T00:00:00+00:00",
+        "requested_end": "2024-07-01T00:00:00+00:00"
+      }
+    },
+    {
+      "kind": "sdist",
+      "status": "READY",
+      "version": "1.2.2",
+      "pip_check": "No broken requirements found.",
+      "network_attempts": 0,
+      "direct_url_sha256": "46cbbd366fcd5796711bae4197531af0fb764108ccdff347f1959d271afffece",
+      "html_sha256": {
+        "backtest": "3474721b0d536a5a3c632644336bef491222bbe98ca7511956387f4d06167ecf",
+        "comparison": "b410d66c0cd49919d51aeddc230ce8dffca6e1953bb6e64b41a304ea4b968b87",
+        "validation": "d5e737e197b92580b3fe6ede2e3163d1e23146c9621cf8d1aec55dbc595a6db0",
+        "sensitivity": "70d30dc50428f84a36b2c9a969f0108c2f4cd2f2cf8f63878e309b2fa83d68a2",
+        "costs": "2b9e0969ed9823893cf2cc6ef909c359b6e683ddb48417f4a9ed0601b5bb558c",
+        "walk_forward": "9b4ab4b8724805185e7f6390aad3960119af562b63b719e11bf0a7075dc70069"
+      },
+      "direct_dsl": {
+        "report_sha256": {
+          "json": "ae841a755cafac7da38b94786a8314a8c4f85d4e50ac9c8f861041cfbc64d508",
+          "markdown": "4d7eeb03c07fb282c64920b21391270e33e5e7fe6c81c2477149e86e35dc6de4",
+          "html": "299c63676c8efdbc6d9e7ae123917a4a83ded36f23b38ea3f20d8e6773a8c554"
+        },
+        "source_sha256": "e2298b5ba650fdd8489b5b85536ac6076b989381df4462baa11dc14f1368ff37",
+        "final_balance": 4148.260765607024,
+        "data_source": "synthetic_demo",
+        "requested_start": "2024-06-01T00:00:00+00:00",
+        "requested_end": "2024-07-01T00:00:00+00:00"
+      }
+    }
+  ],
+  "browser_matches_installed_html": true
+}

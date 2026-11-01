@@ -166,7 +166,7 @@ for boundary in (period.requested_start, period.requested_end):
 path = pathlib.Path('direct-dsl-source.json')
 path.write_text(direct.to_json(), encoding='utf-8')
 hashes = {}
-for format_name in ('json', 'markdown'):
+for format_name in ('json', 'markdown', 'html'):
     report = client.report(direct, format=format_name)
     assert report == client.report(awaited, format=format_name)
     assert report == client.report(path, format=format_name)
@@ -181,6 +181,47 @@ print(json.dumps({'report_sha256': hashes,
  'data_source': direct.data.data_source,
  'requested_start': period.requested_start.isoformat(),
  'requested_end': period.requested_end.isoformat()}))
+"""
+
+
+HTML_API_PROBE = r"""
+import asyncio, hashlib, json, pathlib, sys
+from strategy_backtest_agent import BacktestClient, BacktestClientError
+from strategy_backtest_agent.reports.evidence import build_report
+client = BacktestClient(api_key='')
+root = pathlib.Path(sys.argv[1])
+outputs = {}
+for kind in ('backtest', 'comparison', 'validation', 'sensitivity', 'costs', 'walk_forward'):
+    source = root / (kind + '.json')
+    destination = pathlib.Path('html-' + kind + '.html')
+    before = client.report(source, format='json')
+    rendered = client.report(source, format='html', output=destination)
+    assert rendered.startswith('<!doctype html>')
+    assert rendered == destination.read_text()
+    assert rendered == client.report(source, format='html')
+    assert rendered == asyncio.run(client.areport(source, format='html'))
+    typed = build_report(source.read_bytes())
+    assert rendered == client.report(typed, format='html')
+    assert typed.evidence_sha256 in rendered
+    assert 'Content-Security-Policy' in rendered and '<script' not in rendered
+    assert 'N/A' in rendered and 'No retained equity' in rendered
+    assert client.report(source, format='json') == before
+    try:
+        client.report(source, format='html', output=destination)
+    except BacktestClientError:
+        pass
+    else:
+        raise AssertionError('Installed HTML overwrote destination')
+    forbidden = pathlib.Path('html-ai-must-not-exist.html')
+    try:
+        client.report(source, format='html', ai=True, output=forbidden)
+    except BacktestClientError:
+        pass
+    else:
+        raise AssertionError('Installed HTML accepted an AI request')
+    assert not forbidden.exists()
+    outputs[kind] = hashlib.sha256(rendered.encode()).hexdigest()
+print(json.dumps(outputs))
 """
 
 
@@ -297,6 +338,51 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
             run([str(python), "-I", "-c", DIRECT_DSL_PROBE, str(dsl_config)]).stdout
         )
         (work / "direct-dsl.json").write_text(json.dumps(dsl_receipt, allow_nan=False))
+        html_sources = work / "html-sources"
+        html_sources.mkdir()
+        for kind in (
+            "backtest",
+            "comparison",
+            "validation",
+            "sensitivity",
+            "costs",
+            "walk_forward",
+        ):
+            (html_sources / f"{kind}.json").write_bytes(
+                (checkout / "tests/fixtures/reports/v0.9.0" / f"{kind}.json").read_bytes()
+            )
+        html_receipt = json.loads(
+            run([str(python), "-I", "-c", HTML_API_PROBE, str(html_sources)]).stdout
+        )
+        for kind in html_receipt:
+            cli_html = run(
+                [
+                    str(cli),
+                    "report",
+                    "--input",
+                    str(html_sources / f"{kind}.json"),
+                    "--format",
+                    "html",
+                ]
+            ).stdout
+            assert cli_html == (work / f"html-{kind}.html").read_bytes()
+        ai_html = run(
+            [
+                str(cli),
+                "report",
+                "--input",
+                str(work / "demo.json"),
+                "--format",
+                "html",
+                "--ai",
+                "--output",
+                str(work / "cli-html-ai-must-not-exist.html"),
+            ],
+            success=False,
+        )
+        assert ai_html.returncode == 2 and not ai_html.stdout
+        assert not (work / "cli-html-ai-must-not-exist.html").exists()
+        (work / "html-api.json").write_text(json.dumps(html_receipt))
         init_templates = {}
         for kind in ("backtest", "compare", "validate", "walk-forward"):
             config = work / f"init-{kind}.json"
@@ -341,6 +427,7 @@ def smoke(venv: Path, work: Path, checkout: Path) -> dict[str, Any]:
             },
             "public_api": {
                 "direct_dsl": dsl_receipt,
+                "html_sha256": html_receipt,
                 "evidence_sha256": api_receipt["evidence_sha256"],
                 "input_content_sha256": api_receipt["input_content_sha256"],
                 "markdown_sha256": api_receipt["markdown_sha256"],

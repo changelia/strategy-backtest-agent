@@ -103,7 +103,7 @@ not include credentials when sharing an error report.
 | `OPENAI_MODEL must not be empty` / AI unavailable invalid model | Empty or syntactically invalid configured model | Unset an accidental empty environment value or set the intended model; create a new client. Model access is not tested by doctor. |
 | OpenAI authentication / rate limit / timeout messages | Invalid key, quota/billing, unavailable model or network | Check private account settings/connectivity. A sanitized rate-limit error cannot distinguish all billing/quota causes. Do not retry by exposing keys in logs. |
 | `Request rejected` / unsupported crossover | Rule not in the supported DSL, ambiguity or missing fields | Use completed-candle state comparisons, one symbol, supported indicator parameters. Do not replace a crossover with a level rule unless you intend that different strategy. |
-| `CLIBacktest` / `evaluation_period.requested_start` says string should be datetime after direct Python natural-language run | Published 1.2.0 / 1.2.1 direct DSL wrapper defect | Use `config = client.parse(request)` then `client.run(config=config, demo=True)`; preserve source metrics. The 1.2.2 candidate uses strict JSON validation for sync/async direct execution, including non-demo. Publication remains pending until verified; pip does not yet install the correction. |
+| `CLIBacktest` / `evaluation_period.requested_start` says string should be datetime after direct Python natural-language run | Published 1.2.0 / 1.2.1 direct DSL wrapper defect | Use `config = client.parse(request)` then `client.run(config=config, demo=True)`; preserve source metrics. Published 1.2.2 fixes this with strict JSON validation for sync/async direct execution, including non-demo. Static HTML is a separate unreleased feature. |
 | `Invalid BacktestConfig configuration` / extra forbidden field | Wrong schema, e.g. `period_days` or nested `strategy` in root backtest | Put duration in `days=`/`--days`; use `AIStrategyConfig` with Python for DSL, or the matching research config. |
 | `days conflicts with config period_days` | Two different durations on an AI config/request | Omit `days=` or make it match the validated config. |
 | `--config cannot be combined with legacy strategy/account flags` | Root CLI has config and `--symbol`, `--fee`, etc. | Put those values in the config; keep only compatible duration/demo/JSON/cost flags. |
@@ -124,3 +124,13 @@ Do not share `.env`, raw environment dumps, credential-bearing provider headers 
 account data. Doctor checks presence/configuration and local readiness, not whether
 OpenAI is valid/funded, a model is available, or Binance is reachable. It does not
 repair files. See [AI failure behavior](AI.md#failures-and-boundaries).
+
+## HTML reports in current source (unreleased)
+
+Published pip 1.2.2 does not accept `format="html"` / `--format html`. Use the reviewed
+current source for this feature; install/upgrade commands remain unpinned. HTML+AI
+is deliberately rejected before calls or writes. For file conflicts, use a new
+output path; source/HTML limits or malformed evidence reject without a partial
+report. Horizontal chart scrolling on narrow screens is expected; complete exact
+values are in adjacent tables. Missing equity/drawdown curves reflect absent
+retained series, not a rendering failure. See the [HTML workflow](PYTHON_API.md#standalone-html-reports-unreleased).

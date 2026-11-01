@@ -1,0 +1,340 @@
+{
+  "browser": "156.0.8078.4",
+  "playwright": "1.64.1",
+  "platform": "darwin",
+  "javascript_enabled": false,
+  "external_requests": [],
+  "page_errors": [],
+  "checks": [
+    {
+      "kind": "backtest",
+      "mode": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 20,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "3474721b0d536a5a3c632644336bef491222bbe98ca7511956387f4d06167ecf"
+    },
+    {
+      "kind": "comparison",
+      "mode": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 42,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "b410d66c0cd49919d51aeddc230ce8dffca6e1953bb6e64b41a304ea4b968b87"
+    },
+    {
+      "kind": "validation",
+      "mode": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 43,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "d5e737e197b92580b3fe6ede2e3163d1e23146c9621cf8d1aec55dbc595a6db0"
+    },
+    {
+      "kind": "sensitivity",
+      "mode": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 51,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "70d30dc50428f84a36b2c9a969f0108c2f4cd2f2cf8f63878e309b2fa83d68a2"
+    },
+    {
+      "kind": "costs",
+      "mode": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 4,
+      "metric_rows": 44,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "2b9e0969ed9823893cf2cc6ef909c359b6e683ddb48417f4a9ed0601b5bb558c"
+    },
+    {
+      "kind": "walk_forward",
+      "mode": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 140,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "9b4ab4b8724805185e7f6390aad3960119af562b63b719e11bf0a7075dc70069"
+    },
+    {
+      "kind": "edge",
+      "mode": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 42,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "6adcf9f5f43209b824a272adfbd794366417f4f344ad563275ff8ff5daff58ef"
+    },
+    {
+      "kind": "panels",
+      "mode": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 26,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "97e7f7df1e6f34741e22c1a41f296d6148d758ac54e09864d0f58116885d7e98"
+    },
+    {
+      "kind": "backtest",
+      "mode": "narrow",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "chart_count": 2,
+      "metric_rows": 20,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "3474721b0d536a5a3c632644336bef491222bbe98ca7511956387f4d06167ecf"
+    },
+    {
+      "kind": "comparison",
+      "mode": "narrow",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "chart_count": 2,
+      "metric_rows": 42,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "b410d66c0cd49919d51aeddc230ce8dffca6e1953bb6e64b41a304ea4b968b87"
+    },
+    {
+      "kind": "validation",
+      "mode": "narrow",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "chart_count": 2,
+      "metric_rows": 43,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "d5e737e197b92580b3fe6ede2e3163d1e23146c9621cf8d1aec55dbc595a6db0"
+    },
+    {
+      "kind": "sensitivity",
+      "mode": "narrow",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "chart_count": 2,
+      "metric_rows": 51,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "70d30dc50428f84a36b2c9a969f0108c2f4cd2f2cf8f63878e309b2fa83d68a2"
+    },
+    {
+      "kind": "costs",
+      "mode": "narrow",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "chart_count": 4,
+      "metric_rows": 44,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "2b9e0969ed9823893cf2cc6ef909c359b6e683ddb48417f4a9ed0601b5bb558c"
+    },
+    {
+      "kind": "walk_forward",
+      "mode": "narrow",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "chart_count": 2,
+      "metric_rows": 140,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "9b4ab4b8724805185e7f6390aad3960119af562b63b719e11bf0a7075dc70069"
+    },
+    {
+      "kind": "edge",
+      "mode": "narrow",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "chart_count": 2,
+      "metric_rows": 42,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "6adcf9f5f43209b824a272adfbd794366417f4f344ad563275ff8ff5daff58ef"
+    },
+    {
+      "kind": "panels",
+      "mode": "narrow",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "chart_count": 2,
+      "metric_rows": 26,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "97e7f7df1e6f34741e22c1a41f296d6148d758ac54e09864d0f58116885d7e98"
+    },
+    {
+      "kind": "backtest",
+      "mode": "print",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 20,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "3474721b0d536a5a3c632644336bef491222bbe98ca7511956387f4d06167ecf"
+    },
+    {
+      "kind": "comparison",
+      "mode": "print",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 42,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "b410d66c0cd49919d51aeddc230ce8dffca6e1953bb6e64b41a304ea4b968b87"
+    },
+    {
+      "kind": "validation",
+      "mode": "print",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 43,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "d5e737e197b92580b3fe6ede2e3163d1e23146c9621cf8d1aec55dbc595a6db0"
+    },
+    {
+      "kind": "sensitivity",
+      "mode": "print",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 51,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "70d30dc50428f84a36b2c9a969f0108c2f4cd2f2cf8f63878e309b2fa83d68a2"
+    },
+    {
+      "kind": "costs",
+      "mode": "print",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 4,
+      "metric_rows": 44,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "2b9e0969ed9823893cf2cc6ef909c359b6e683ddb48417f4a9ed0601b5bb558c"
+    },
+    {
+      "kind": "walk_forward",
+      "mode": "print",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 140,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "9b4ab4b8724805185e7f6390aad3960119af562b63b719e11bf0a7075dc70069"
+    },
+    {
+      "kind": "edge",
+      "mode": "print",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 42,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "6adcf9f5f43209b824a272adfbd794366417f4f344ad563275ff8ff5daff58ef"
+    },
+    {
+      "kind": "panels",
+      "mode": "print",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "chart_count": 2,
+      "metric_rows": 26,
+      "font_family": "system-ui, sans-serif",
+      "horizontal_overflow": false,
+      "html_sha256": "97e7f7df1e6f34741e22c1a41f296d6148d758ac54e09864d0f58116885d7e98"
+    }
+  ],
+  "screenshots": {
+    "comparison-desktop.png": "3d0edcc6d0fbd29ef2941f06c1421290412ac69ddae3cccc5206cb7415cde742",
+    "comparison-desktop-charts.png": "04b985f1900eefa050a6b377545187676fc4e976ae6ebc110dd20a0e799e6391",
+    "costs-desktop.png": "8827f9f99bf049e54db0dfe1be57084327e4fec4e52f9f9faf516cf9a5886feb",
+    "costs-desktop-charts.png": "5abbda6afe046aa19dcc5b3a4697e99d947660764ec229fdc985db89a3e5887a",
+    "costs-components.png": "940819553f4110fdbb0e87131e295ad4615bfaacf528dd37913e8988511d57fe",
+    "comparison-narrow.png": "b89b6a02e305c375f775d99d9568ef230650c0c9a7e4ae99dd93973c772a52c9",
+    "comparison-narrow-charts.png": "16ede03b310e16099cba446ca0b94a452c93ba0ee91f9d3590b2a76d9df4bdfa",
+    "comparison-narrow-marks.png": "1c8817e590f9d6f0c1c013ee23c12fa1524ef28e477438b6f66eba13211c129b",
+    "edge-narrow.png": "b89b6a02e305c375f775d99d9568ef230650c0c9a7e4ae99dd93973c772a52c9",
+    "edge-narrow-charts.png": "49361e812ae6a44767e2d2c3e35a74127adb2a70dab64d893dd0cbcd0ebf3023",
+    "edge-narrow-marks.png": "7d9c24cee3297376df853299f458d77f3854a8057fcd9722a073ad239df60522",
+    "edge-narrow-label.png": "86b7b433f92f9733f5fe284a62b1bf248a1f999cba3c9764ca28431a8cbaf04d",
+    "comparison-print.png": "9de84bb907727246f24b83c8ce5b0a92aac4b247f95e9d896eb79d1ef2bc7fc5",
+    "comparison-print-charts.png": "809160f643f4d4b087cbabdd32905959c639d019bab79ccac7e985dcada9e338"
+  },
+  "print_pdf_bytes": 366506,
+  "status": "READY"
+}

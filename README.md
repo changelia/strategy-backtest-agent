@@ -27,9 +27,9 @@ operations; Windows file output is unsupported. See the
 
 The distribution is `strategy-backtest-agent`, the Python import is
 `strategy_backtest_agent`, and the terminal executable is `strategy-backtest`.
-Published versions 1.2.0 and 1.2.1 include both the Python client and CLI.
-The 1.2.2 patch candidate fixes direct DSL timestamp validation; publication remains
-pending until verified. Customer installation and upgrade commands stay unpinned.
+Published 1.2.2 includes the Python client, CLI and direct DSL timestamp fix.
+Static HTML reports described below are **unreleased source functionality**;
+`pip install` of published 1.2.2 does not include HTML. Installation commands stay unpinned.
 
 ## Your first strategy with AI
 
@@ -64,9 +64,8 @@ alone makes no request. `parse()` uses paid OpenAI; `demo=True` makes only the s
 execution offline. Omit `demo=True` to fetch Binance history instead. Direct natural-language
 convenience calls also use paid AI. Published versions **1.2.0 / 1.2.1** have a
 [direct DSL timestamp validation defect](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/AI.md#direct-natural-language-execution);
-use the parse-then-config path above with those versions. The **1.2.2 candidate**
+use the parse-then-config path above with those versions. Published **1.2.2**
 contains the correction, with strict UTC types and the AI source envelope preserved.
-**Publication remains pending until verified**; pip does not yet install the correction.
 
 For environment variables, `.env`, inspection, and terminal AI workflows, see the
 [AI guide](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/AI.md).
@@ -119,6 +118,41 @@ is raw research output, `report.json` is normalized evidence and provenance, and
 key works. Start again in a new directory for safe reruns. See
 [Quick Start](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/QUICK_START.md)
 and [CLI reference](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/CLI.md).
+
+## Standalone HTML reports (unreleased)
+
+Requires the current source checkout; published pip 1.2.2 does not include this
+format. With that source installed, run this complete offline Python example in a
+fresh directory:
+
+```python
+from pathlib import Path
+from strategy_backtest_agent import BacktestClient, BacktestConfig
+
+client = BacktestClient()
+result = client.run(config=BacktestConfig(), days=3, demo=True)
+raw = Path("research-source.json")
+with raw.open("x", encoding="utf-8", newline="\n") as stream:
+    stream.write(result.to_json())
+result.save_report("research.html", format="html")
+assert client.report(raw, format="html") == client.report(result, format="html")
+print(Path("research.html").resolve().as_uri())
+```
+
+Open the printed local file URL in your browser or double-click `research.html`.
+The library does not launch a browser. The single file works without network access,
+JavaScript, external fonts or assets. All six research modes support scalar net
+strategy/benchmark return bars, separately labeled scalar max drawdown, applicable
+Train-only cost bars, and complete numeric evidence tables. Read R scope labels,
+UTC boundaries, units, limitations and source/evidence hashes alongside each result.
+Null metrics remain N/A; charts do not turn missing values into zero. Narrow screens
+can scroll charts horizontally; exact values are also in adjacent tables.
+
+No equity/drawdown curves, heatmaps, fold timelines or stitched-index plots are
+included. Saved results lack the retained price/equity series needed for curves.
+HTML+AI requests reject before AI calls or writes. Files are never overwritten;
+use new names when repeating. See [Python HTML workflow](docs/PYTHON_API.md#standalone-html-reports-unreleased)
+and [CLI HTML workflow](docs/CLI.md#standalone-html-workflow-unreleased).
 
 ## Research capabilities
 

@@ -1,5 +1,10 @@
 # Visual Report Contract — Proposal for Review
 
+Implementation status: the first evidence-only HTML renderer and Python/CLI format
+integration are implemented in unreleased source. See [Python HTML usage](PYTHON_API.md#standalone-html-reports-unreleased)
+and [browser evidence](evidence/static-html/README.md). The proposal below is the
+reviewed historical contract; later charts and engine-series extensions remain deferred.
+
 Baseline: main `54f557e313b728e60ccf247fc06564551dc58a12`, package 1.2.2.
 [Task 22](https://app.notion.com/p/3fccab7562dc8133a28cc3106ceed08a) authorizes this
 audit/design increment, not runtime implementation. The task's old v1.2.0 milestone

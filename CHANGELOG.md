@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Evidence-only standalone HTML reports through Python report/areport/save_report and
+  `strategy-backtest report --format html`, for all six modes and accepted legacy inputs.
+- Complete numeric tables, scalar net strategy/benchmark returns, separate scalar
+  max drawdown, Train-only scenario differences and modeled-cost bars. No time-series
+  reconstruction, heatmaps, fold timelines or stitched-index plots.
+- Standard-library HTML/CSS/allowlisted SVG with hashed stylesheet CSP, no scripts or
+  external assets, bounded typed-report validation, deterministic output and the
+  existing atomic no-overwrite writer. HTML+AI requests reject before calls/writes.
+
+Published pip 1.2.2 does not include HTML. Package version, runtime dependencies,
+engine calculations and public report schemas remain unchanged in this source work.
+Earlier release/candidate records below preserve their historical wording.
+
 ## v1.2.2 — Direct DSL Timestamp Validation (publication pending)
 
 ### Fixed

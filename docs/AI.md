@@ -166,14 +166,14 @@ those fields and can succeed; do not rely on the AI selecting a legacy shape.
 Use `parse()` followed by `run(config=config)` from the previous section with the
 affected releases. This preserves the rules and avoids the defect.
 
-**1.2.2 candidate, publication pending:** direct execution now validates the serialized
+**Published 1.2.2:** direct execution now validates the serialized
 backtest in JSON mode, consistently with explicit-config execution. Strict schemas,
 typed UTC evaluation boundaries, original AI source envelope, financial values,
 execution assumptions and provenance are preserved. Direct JSON/Markdown reports
-also work. Publication remains pending until verified. The customer pip installation
-command remains unpinned and does not yet install this correction.
+also work. Customer pip installation commands remain unpinned. Static HTML is a
+separate unreleased addition; published 1.2.2 does not include HTML.
 
-The following convenience example requires the 1.2.2 candidate source and uses paid parsing;
+The following convenience example requires 1.2.2 or the current source and uses paid parsing;
 `demo=True` keeps only the subsequent calculation offline:
 
 ```python

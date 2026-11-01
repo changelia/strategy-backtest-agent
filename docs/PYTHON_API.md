@@ -100,10 +100,10 @@ print(result.summary())
 
 `run(request, ...)` accepts a natural-language request and parses it before research.
 Published versions **1.2.0 / 1.2.1** have a [direct DSL timestamp validation defect](AI.md#direct-natural-language-execution);
-use separate `parse()` then `run(config=...)` with those versions. The 1.2.2 candidate uses
+use separate `parse()` then `run(config=...)` with those versions. Published 1.2.2 uses
 strict JSON validation consistently for `run` and `arun`, preserving typed UTC
-boundaries and the original input/parsed-strategy/result envelope. **Publication
-remains pending until verified**; installing with pip does not yet provide the correction.
+boundaries and the original input/parsed-strategy/result envelope. HTML reports below
+are a separate, unreleased addition and are not included in published 1.2.2.
 `run(config=...)` accepts the existing `BacktestConfig` or `AIStrategyConfig` model.
 Both may also receive mappings or JSON paths. Use `days=` only for a backtest template;
 parsed and `AIStrategyConfig` durations must agree with their configuration. `demo=True`
@@ -281,6 +281,70 @@ writes to `output=`. JSON reports preserve normalized evidence, source and evide
 hashes, provenance, warnings, and optional interpretation. AI interpretation uses the
 existing constrained structured response and falls back to deterministic output when
 unavailable or rejected. It does not change financial evidence.
+
+## Standalone HTML reports (unreleased)
+
+The following requires current source, not published pip 1.2.2. Customer install and
+upgrade commands remain unpinned; do not expect that release to accept `format="html"`.
+All six research modes use the same evidence-only HTML renderer. Start in a fresh
+directory and save both the raw result and its presentation:
+
+```python
+import asyncio
+from pathlib import Path
+from strategy_backtest_agent import BacktestClient, BacktestConfig
+
+async def main():
+    client = BacktestClient()
+    result = await client.arun(config=BacktestConfig(), days=3, demo=True)
+    raw = Path("research-source.json")
+    with raw.open("x", encoding="utf-8", newline="\n") as stream:
+        stream.write(result.to_json())
+    result.save_report("research.html", format="html")
+    # Async rendering returns the same string; no new calculation or provider call.
+    html = await client.areport(raw, format="html")
+    assert html == client.report(result, format="html")
+    print(Path("research.html").resolve())
+    print(Path("research.html").resolve().as_uri())
+
+asyncio.run(main())
+```
+
+Open the printed file URL yourself or double-click the file in the printed directory.
+Rendering never launches a browser. `client.report(source, format="html", output=...)`
+and `result.save_report(..., format="html")` return strings and use the same atomic
+no-overwrite writer as existing formats. Existing files, symlink destinations/parents
+and parent traversal reject. The POSIX file-output platform limit is unchanged.
+
+The file embeds its fixed CSS and SVG with a stylesheet-hash CSP. It needs no scripts,
+network, fonts, images or companion directory. Scope R labels identify independent
+strategy/Train/Test/fold portfolios. Compare net strategy and net benchmark returns
+in %, differences in pp and modeled costs in quote currency; inspect the complete
+exact-value tables, UTC boundaries, metadata, warnings and limitations. Scalar max
+drawdown bars are summaries, not paths. Sensitivity/cost analyses remain Train-only.
+No ranking, optimization or new financial calculation occurs. Charts can scroll on
+narrow screens; adjacent tables preserve all values. Missing metrics are N/A, not zero.
+
+Equity/drawdown/benchmark curves are unavailable because the result schemas retain
+no such series. Heatmaps, timelines and stitched-index plots are deferred. HTML
+splits charts after 25 scope groups without dropping rows and rejects output above
+64 MiB before publishing a file. Typed normalized reports also have bounded structural,
+reference, unit, chronology and evidence-hash checks (16 MiB serialized input,
+250,000 nodes, depth 32, 8,192 characters per string). These checks do not authenticate
+prices or verify native accounting when the original result is absent.
+
+Accepted native models/mappings/files, AI envelopes and legacy inputs keep their
+existing adapters and original-byte hash meanings. `client.report(typed_report,
+format="html")` supports a typed `ResearchReport`; a filename containing normalized
+report JSON remains unsupported. Raw result JSON (`result.to_json()`) is the reusable
+file input, not `client.report(..., format="json")`. Original AI prompt text is not
+included in HTML by default.
+
+`format="html", ai=True` rejects before AI calls or file writes. A supplied typed
+report with existing AI interpretation renders that text escaped and separately
+labeled, without making a request. Markdown/JSON AI behavior is unchanged. Repeated
+rendering of identical source bytes is deterministic; different envelopes can have
+different hashes even when their financial metrics agree.
 
 ## Templates and diagnostics
 
@@ -574,7 +638,7 @@ client.doctor(*, workflow: str | None = None,
               config: ConfigValue | None = None) -> DoctorDiagnostics
 client.report(source: ClientResult | BaseModel | ResearchReport |
               Mapping[str, Any] | str | Path, *,
-              format: Literal["markdown", "json"] = "markdown",
+              format: Literal["markdown", "json", "html"] = "markdown",
               output: str | Path | None = None, ai: bool = False) -> str
 ```
 
@@ -590,7 +654,8 @@ without replacing the destination.
 proxied for convenient metric access. `summary()` returns formatted text;
 `model_dump()` and `model_dump_json()` serialize the typed engine model; `to_json()`
 returns CLI-compatible raw source JSON. `report()` instead returns normalized
-deterministic report JSON or Markdown and may safely save it through `output=`.
+deterministic report JSON or Markdown (plus HTML in unreleased source) and may safely
+save it through `output=`.
 `save_report(path, ...)` is available on the result object.
 
 Serialization details:
@@ -719,7 +784,7 @@ result.summary() -> str
 result.model_dump(*, mode: str = "python") -> dict[str, Any]
 result.model_dump_json() -> str
 result.to_json() -> str
-result.save_report(path: str | Path, *, format: Literal["markdown", "json"] = "markdown",
+result.save_report(path: str | Path, *, format: Literal["markdown", "json", "html"] = "markdown",
                    ai: bool = False) -> str
 ```
 

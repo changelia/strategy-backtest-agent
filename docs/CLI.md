@@ -20,8 +20,8 @@ All commands accept `-h` / `--help` and exit 0 after showing help. Subcommand di
 comes first: use `strategy-backtest compare --help`, not root flags before `compare`.
 There is no root `--version` flag; use
 `python -c 'from importlib.metadata import version; print(version("strategy-backtest-agent"))'`.
-Options below describe the installed v1.2.0 implementation. Check installed help if a
-later package changes them. [Installation](QUICK_START.md#1-install-into-a-virtual-environment)
+Options below describe published 1.2.2, with HTML explicitly marked as unreleased.
+Check installed help if a later package changes them. [Installation](QUICK_START.md#1-install-into-a-virtual-environment)
 and [credential setup](AI.md#create-and-configure-a-key) are prerequisites for network examples.
 
 ## Root backtest
@@ -125,7 +125,7 @@ Key presence is not key validation; model configuration is not provider availabi
 ## `report`
 
 ```text
-strategy-backtest report --input RESULT.json [--format {markdown,json}] [--output FILE] [--ai]
+strategy-backtest report --input RESULT.json [--format {markdown,json,html}] [--output FILE] [--ai]
 ```
 
 Validates an existing result for one of six research types and renders it without
@@ -143,6 +143,42 @@ strategy-backtest --demo --days 3 --json > result.json
 strategy-backtest report --input result.json --format json --output report.json
 strategy-backtest report --input result.json --format markdown --output report.md
 ```
+
+## Standalone HTML workflow (unreleased)
+
+Requires current source; published pip 1.2.2 does not support `--format html`.
+Installation/upgrade examples remain unpinned. In a fresh directory with that source
+installed:
+
+```bash
+# Shell noclobber protects the raw file created by redirection.
+set -C
+strategy-backtest --demo --json > research-source.json
+strategy-backtest report --input research-source.json --format html --output research.html
+```
+
+`research-source.json` contains raw research, and `research.html` is the standalone
+presentation in your current directory. Open that HTML file yourself in a browser
+(e.g. double-click it); the command does not open a browser. The demo and rendering
+are offline and need no OpenAI key. To render existing comparison, validation,
+sensitivity, cost or Walk-Forward results, substitute their complete raw JSON file.
+No backtest or data fetch is repeated.
+
+The single UTF-8 file embeds fixed CSS/SVG, no JavaScript or external assets. Read
+scope R labels, actual/requested UTC bounds, units, exact numeric tables, hashes,
+warnings and limitations. Net return/benchmark bars and separate scalar max-drawdown
+bars are supported; scenario differences use pp, cost components use quote currency
+and remain Train-only. Nulls display N/A. Heatmaps, timelines, stitched-index plots
+and equity/drawdown curves are not provided. Saved outputs do not retain the series
+needed for curves. On narrow screens charts scroll; adjacent tables keep exact values.
+
+`--output` uses the shared atomic no-overwrite writer and refuses existing files,
+symlinks and parent traversal. Use new filenames when repeating. Without `--output`,
+stdout is HTML only; ordinary shell redirection can overwrite and does not inherit
+writer protections. `--format html --ai` exits 2 before AI calls or output writes.
+Invalid inputs/limits reject without a partial published file. Rendering caps HTML
+at 64 MiB and splits panels at 25 scopes without dropping evidence rows. A normalized
+report JSON file is not an accepted native research input; save raw `--json` output.
 
 ## Shared research command pattern
 
@@ -285,9 +321,9 @@ provider failures print an error to stderr and exit 2. See [Troubleshooting](TRO
 No `--output` exists for raw research; use stdout redirection. Shell failures such as
 noclobber are shell errors before application execution and can have different status
 codes. A failed command can leave an empty redirected file; do not pass it as research.
-Use a new filename after addressing the error. `--format` accepts exactly `markdown`
-and `json`, not `md`; report `--input` is a raw result, not a config or a normalized
-report JSON. The Python API can additionally render an existing `ResearchReport` model.
+Use a new filename after addressing the error. `--format` accepts `markdown` and
+`json` (not `md`), plus `html` in unreleased source. Published 1.2.2 lacks HTML.
+Report `--input` is a raw result, not a config or a normalized report JSON. The Python API can additionally render an existing `ResearchReport` model.
 
 All safe writers reject existing destinations, directory conflicts, symlink traversal
 and `..` output paths. On macOS, use physical paths (for example `/private/tmp`, not
