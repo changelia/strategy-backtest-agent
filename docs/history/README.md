@@ -7,6 +7,9 @@ guides; for current usage, see the [README](../../README.md) and the guides in
 
 - [ADVANCED_INDICATORS_AUDIT.md](ADVANCED_INDICATORS_AUDIT.md): v0.9 mathematical and
   causality audit of the advanced indicators.
+- [architecture-records.md](architecture-records.md): release metadata, the
+  sensitivity grid-stability audit and v1.0.0 release verification moved from
+  ARCHITECTURE.md.
 - [CI_PACKAGING_VALIDATION.md](CI_PACKAGING_VALIDATION.md): Task #17 CI packaging
   validation of the wheel and source distribution.
 - [CLI_DOCTOR_IMPLEMENTATION.md](CLI_DOCTOR_IMPLEMENTATION.md): Task #19 CLI doctor and
