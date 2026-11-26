@@ -23,10 +23,10 @@ installation are not verified, so this is not approval to publish.
 
 | Area | Evidence and assessment |
 | --- | --- |
-| Names and layout | [pyproject.toml](pyproject.toml), lines 2, 11–12: distribution `strategy-backtest-agent`; import package `strategy_backtest_agent` under `src/`, with `__init__.py` and 57 tracked Python files. Explicit discovery selects that package and its subpackages for both formats. Hyphens in a distribution and underscores in an import are consistent. |
+| Names and layout | [pyproject.toml](../../pyproject.toml), lines 2, 11–12: distribution `strategy-backtest-agent`; import package `strategy_backtest_agent` under `src/`, with `__init__.py` and 57 tracked Python files. Explicit discovery selects that package and its subpackages for both formats. Hyphens in a distribution and underscores in an import are consistent. |
 | Version | `pyproject.toml:3` declares `1.0.0`, matching README's released version. Task #14 belongs to planned v1.1.0 work; it does not authorize a version bump. No competing source `__version__` was found. |
 | Summary and README | `pyproject.toml:4,7` supplies a short description and `README.md`. Markdown long-description configuration is appropriate. README accurately documents the `strategy-backtest` CLI, Poetry checkout workflow, dotenv precedence and historical-research limitations. Relative links/config examples assume a source checkout; do not imply those files will exist after a wheel installation. |
-| License | `pyproject.toml:6` declares MIT; [LICENSE](LICENSE) contains MIT terms and the existing copyright attribution. No license choice is needed. The table form is accepted by current checks, although current Poetry documentation deprecates it in favor of an SPDX string. Any later modernization must check the minimum poetry-core version and preserve the existing license. |
+| License | `pyproject.toml:6` declares MIT; [LICENSE](../../LICENSE) contains MIT terms and the existing copyright attribution. No license choice is needed. The table form is accepted by current checks, although current Poetry documentation deprecates it in favor of an SPDX string. Any later modernization must check the minimum poetry-core version and preserve the existing license. |
 | Authors and URLs | `pyproject.toml:5` is `authors = []`; project/maintainer URL metadata is absent. These are metadata-quality gaps, not a confirmed build failure. Obtain owner-approved attribution or omit optional author data; do not infer it from the copyright line. Repository/issues URLs can reference the existing GitHub project. |
 | Python | `pyproject.toml:8,15`: `>=3.12,<4.0` and `^3.12` agree. Local checks use CPython 3.12.3 on macOS; CI covers Python 3.12 on Ubuntu only. This does not establish support for every later Python 3.x or OS. Report file output has documented POSIX requirements (`reports/cli.py:16–40`). |
 | Build backend | `pyproject.toml:31–33`: PEP 517 `poetry.core.masonry.api`, requiring `poetry-core>=2.0.0,<3.0.0`. No custom build script or compiled project extension is declared. Backend requirements are separate from runtime dependencies and are not pinned by the application lock. |
@@ -36,7 +36,7 @@ installation are not verified, so this is not approval to publish.
 | CLI | `pyproject.toml:28–29` points to the existing `strategy_backtest_agent.cli:main`. `cli.py:148–150` loads dotenv before dispatch. Checkout help/demo and the existing CLI regression suite pass; this does not prove a wheel-created executable works. |
 | Lock consistency | `poetry check --lock` exits 0 with `All set!`. Lock version is 2.1, Python constraint `^3.12`, content hash `d5350bf5ff777c419bb4a77a1500ad085c1d4409e47c39c8c860f04507d96f00`. Runtime/dev groups agree with the project declarations. Neither file was changed. |
 | Local environment mismatch | Read-only `importlib.metadata` inspection reports installed editable distribution version **0.7.0**, linked to this checkout, while source metadata declares **1.0.0**. This predates the documentation edit. It is stale installed metadata, not evidence that a newly built artifact would have the wrong version. Do not use this environment as proof of packaging/install correctness. No reinstall was performed. |
-| CI and release checks | [.github/workflows/ci.yml](.github/workflows/ci.yml), lines 1–19: push/PR workflow, read-only repository permission, Poetry 2.1.4, Ubuntu/Python 3.12, install, Ruff, format, mypy and pytest. It has no build, archive inspection, clean install, metadata validation/upload or publishing job. Demo/help are manual checks here. Existing release notes do not replace distribution checks. |
+| CI and release checks | [.github/workflows/ci.yml](../../.github/workflows/ci.yml), lines 1–19: push/PR workflow, read-only repository permission, Poetry 2.1.4, Ubuntu/Python 3.12, install, Ruff, format, mypy and pytest. It has no build, archive inspection, clean install, metadata validation/upload or publishing job. Demo/help are manual checks here. Existing release notes do not replace distribution checks. |
 
 ## PyPI namespace evidence
 
@@ -77,7 +77,7 @@ can resolve another 2.x release, so Task #15 must record the backend actually us
 - README is explicitly configured; root LICENSE matches backend legal-file
   defaults. A standalone README file in a wheel is not promised; its text should
   become package metadata. Verify both archive forms and license placement later.
-- [.gitignore](.gitignore), lines 1–24, excludes `.env`, `.env.*`, caches,
+- [.gitignore](../../.gitignore), lines 1–24, excludes `.env`, `.env.*`, caches,
   bytecode, virtualenv/build directories and egg-info. `.env.example` is the sole
   tracked dotenv template. No actual `.env` is tracked; credential contents were
   not inspected. Poetry uses VCS ignores when available, but Git ignore rules

@@ -41,7 +41,7 @@ actionlint .github/workflows/ci.yml .github/workflows/release.yml
 ```
 
 Run the existing `tests/packaging_ci.py` with isolated build tooling and a fresh
-workspace outside the checkout, as in [CI packaging validation](CI_PACKAGING_VALIDATION.md).
+workspace outside the checkout, as in [CI packaging validation](docs/history/CI_PACKAGING_VALIDATION.md).
 It builds a fresh wheel and sdist, runs `twine check --strict`, inspects archives,
 installs each separately and runs offline installed smoke checks. Both artifacts
 must report `1.2.2`, import from their own site-packages and pass `pip check`.
