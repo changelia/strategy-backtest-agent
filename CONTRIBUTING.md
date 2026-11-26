@@ -15,8 +15,16 @@ poetry run ruff format --check .
 poetry run mypy
 ```
 
-Keep changes small and describe the problem, resulting behavior, and validation in
-pull requests. Add deterministic tests for meaningful behavior changes. Unit tests
+AI coding agents follow the same rules, summarized in [AGENTS.md](AGENTS.md)
+(Claude Code reads it through [CLAUDE.md](CLAUDE.md)).
+
+Work on a branch from current `main`. Make one logical change per commit, about 200
+changed lines at most (lock files excluded), with its tests in the same commit; every
+commit passes all checks. Write messages as Conventional Commits:
+`type(scope): subject`, imperative, lowercase, at most 72 characters, for example
+`fix(reports): escape the footer renderer version`. Never mix a refactor and a
+feature. Describe the problem, resulting behavior and validation in the branch's
+review notes. Add deterministic tests for meaningful behavior changes. Unit tests
 must not access the network; use mocked provider responses. Preserve next-candle
 execution and mathematical consistency between fees, PnL, and portfolio balances.
 
