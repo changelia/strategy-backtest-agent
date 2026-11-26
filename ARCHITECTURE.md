@@ -1,4 +1,10 @@
-# Strategy rule architecture
+# Architecture and design record
+
+This document is the complete design record for the engine, the rule language,
+every research mode and the reports. It is normative: when in doubt about engine
+behavior, this record wins, as [AGENTS.md](AGENTS.md) states. For a short plain-English overview,
+read [How it works](docs/how-it-works.md) first; it links back to the sections
+below for the exact rules.
 
 The existing `BacktestConfig`, candle/trade models, indicators, execution accounting, and
 metrics remain the core. The rule engine adds no dependencies.
@@ -16,6 +22,23 @@ Natural language → ai/parser.py → AIStrategyConfig (RSI or RuleStrategy)
                                  ↓
                     cli.py: deterministic summary or JSON
 ```
+
+## Contents
+
+- [Validation and indicator preparation](#validation-and-indicator-preparation)
+- [Execution and compatibility](#execution-and-compatibility)
+- [Strategy DSL reference](#strategy-dsl-reference)
+- [Historical warm-up policy](#historical-warm-up-policy)
+- [Parser defaults and API boundaries](#parser-defaults-and-api-boundaries)
+- [Candle boundaries and accounting](#candle-boundaries-and-accounting)
+- [Metrics](#metrics)
+- [Strategy comparison](#strategy-comparison)
+- [Chronological out-of-sample validation](#chronological-out-of-sample-validation)
+- [Deterministic parameter sensitivity](#deterministic-parameter-sensitivity)
+- [Deterministic execution costs (v0.7.0)](#deterministic-execution-costs-v070)
+- [Fixed-strategy walk-forward analysis](#fixed-strategy-walk-forward-analysis)
+- [Advanced indicator conventions](#advanced-indicator-conventions)
+- [Evidence-grounded reports (v1.0 feature)](#evidence-grounded-reports-v10-feature)
 
 ## Validation and indicator preparation
 
