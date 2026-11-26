@@ -22,3 +22,6 @@ htmlcov/
 *.swo
 Thumbs.db
 .envrc
+
+# Private maintainer instructions for Claude Code
+CLAUDE.local.md
