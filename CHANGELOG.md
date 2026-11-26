@@ -17,7 +17,7 @@ Published pip 1.2.2 does not include HTML. Package version, runtime dependencies
 engine calculations and public report schemas remain unchanged in this source work.
 Earlier release/candidate records below preserve their historical wording.
 
-## v1.2.2 — Direct DSL Timestamp Validation (publication pending)
+## v1.2.2 — Direct DSL Timestamp Validation (published 2026-10-31)
 
 ### Fixed
 
@@ -29,14 +29,14 @@ Earlier release/candidate records below preserve their historical wording.
   legacy RSI, typed UTC boundaries, direct/saved-source deterministic JSON/Markdown
   reports, strict rejection and isolated installed wheel/sdist smoke checks.
 
-Published **1.2.0 / 1.2.1** remain affected. The **1.2.2 candidate** contains the fix;
-**publication remains pending until verified**. Unpinned pip installation does not
-yet provide this correction. Only package metadata and matching current-version
+Published **1.2.0 / 1.2.1** remain affected. **1.2.2**, published to PyPI on
+2026-10-31, contains the fix; unpinned pip installation now provides this
+correction. Only package metadata and matching current-version
 fixtures change for release preparation; runtime dependencies, financial behavior
-and report schemas remain unchanged. The v1.2.1 candidate record below preserves
-its original pre-publication status and defect evidence.
+and report schemas remain unchanged. The v1.2.1 section below preserves its
+original defect evidence.
 
-## v1.2.1 — Customer Documentation (publication pending)
+## v1.2.1 — Customer Documentation (published 2026-10-19)
 
 ### Changed
 
@@ -52,7 +52,7 @@ its original pre-publication status and defect evidence.
 
 ### Compatibility, known limitations and release status
 
-- Package metadata is `1.2.1`; publication remains pending. This candidate includes
+- Package metadata is `1.2.1`, published to PyPI on 2026-10-19. This release includes
   the reviewed documentation already on main and introduces no new runtime features.
 - Financial calculations, runtime dependencies and report/schema versions are unchanged.
 - The known direct natural-language single-backtest DSL defect is **not fixed**:
