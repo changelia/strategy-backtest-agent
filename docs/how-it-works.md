@@ -174,3 +174,97 @@ record the anchors used. Legacy single-strategy RSI runs keep their original
 in-range initialization. See
 [Shared history, initialization and indicators](../ARCHITECTURE.md#shared-history-initialization-and-indicators)
 and [Warm-up, dependency identity and metadata](../ARCHITECTURE.md#warm-up-dependency-identity-and-metadata).
+
+## 5. The six research modes
+
+Every mode reuses the same DSL, provider, indicators, backtester and metrics. Each
+makes one history fetch, and every backtest inside it starts with fresh cash and no
+position; segments, folds, variants and scenarios never share cash, positions or
+signals.
+
+| Mode (CLI) | Question it answers | Segment evaluated | It never |
+| --- | --- | --- | --- |
+| Single backtest (`strategy-backtest`, `ai`) | How did one fixed rule behave? | The requested evaluation window | Predicts or recommends |
+| Comparison (`compare`) | How did 2–5 rules behave on identical history? | The evaluation window, shared by all strategies | Builds a composite score or picks a winner; ranking uses one chosen metric |
+| Validation (`validate`) | What changed on held-out data? | Chronological Train, then Test, for 1–5 strategies | Ranks, selects or optimizes strategies |
+| Sensitivity (`sensitivity`) | How do results move across a declared parameter grid? | Train only; Test is reserved and never evaluated | Optimizes, selects or recommends a variant |
+| Costs (`costs`) | How much did modeled costs matter? | Train only, 2–8 declared scenarios against a zero-spread/slippage baseline | Sorts scenarios or picks a winner |
+| Walk-forward (`walk-forward`) | How did fixed rules behave across rolling or expanding folds? | Train and Test per fold; aggregates use Test only | Re-optimizes per fold or carries positions across folds |
+
+A few rules worth knowing:
+
+- **Validation** splits the evaluation candles chronologically at
+  `floor(N × train_ratio)` (default 0.70). Test indicators keep earlier history for
+  initialization, but Test starts with fresh cash, and the last Train signal cannot
+  execute in Test.
+- **Sensitivity** expands 1–3 dimensions into at most 25 variants in a stable order
+  and describes neighbors; its labels are heuristics, not robustness scores.
+- **Walk-forward** needs at least two complete folds, rejects silent truncation and
+  can add a stitched out-of-sample index built from fold endpoints, not a
+  continuous portfolio.
+- Holdout validity depends on freezing rules before looking at Test; the software
+  cannot prove the data was unseen.
+
+See [Strategy comparison](../ARCHITECTURE.md#strategy-comparison),
+[Chronological out-of-sample validation](../ARCHITECTURE.md#chronological-out-of-sample-validation),
+[Deterministic parameter sensitivity](../ARCHITECTURE.md#deterministic-parameter-sensitivity),
+[Shared research engines and cost scenarios](../ARCHITECTURE.md#shared-research-engines-and-cost-scenarios)
+and [Fixed-strategy walk-forward analysis](../ARCHITECTURE.md#fixed-strategy-walk-forward-analysis).
+
+## 6. Reports
+
+`strategy-backtest report --input <file>` and the client's report methods read one
+existing JSON result. They never call a data provider or the backtester and never
+recompute an indicator or trade.
+
+- **Validation.** Inputs are untrusted and bounded (for example 16 MiB and depth 32).
+  An explicit adapter identifies each supported result type; ambiguous shapes are
+  rejected rather than guessed. Accounting, segment bounds and summaries are checked
+  for consistency.
+- **Evidence.** Metrics are copied with stable IDs, JSON source paths, units and
+  context. Percent and percentage points are kept separate, monetary costs use the
+  quote currency, and undefined metrics stay null. Sensitivity and cost results are
+  labeled Train-only.
+- **Formats.** Markdown, strict JSON and, in unreleased source, offline HTML. The
+  HTML renderer uses no scripts or external assets, and HTML cannot be combined with
+  AI interpretation.
+- **Optional AI.** With `--ai`, the model only selects from approved explanation and
+  research-question codes for deterministic observations. Unknown references, free
+  prose, invented numbers, advice and forecasts reject the interpretation. If AI is
+  unavailable or rejected, the full deterministic report is still produced.
+- **Safe output.** Files are written atomically and never overwrite an existing
+  destination or the input; symlinked directories and parent traversal are rejected.
+
+See [Evidence-grounded reports](../ARCHITECTURE.md#evidence-grounded-reports-v10-feature)
+and [Optional interpretation and trust boundaries](../ARCHITECTURE.md#optional-interpretation-and-trust-boundaries).
+
+## 7. Trust boundaries and limitations
+
+**Trust boundaries**
+
+- Only the Python engine computes financial numbers. AI parses requests and selects
+  grounded explanations; it never calculates results, ranks strategies or runs code.
+- Config mode never imports the AI parser and needs no OpenAI key. OpenAI requests
+  use `store=False`, a 30-second timeout and no automatic retries.
+- No prompt, credential or raw provider response reaches JSON output or errors.
+- No arbitrary expressions, generated code or dynamic code execution are used.
+- The CLI loads `.env` once without overriding shell values; library calls do not
+  load files implicitly.
+
+**Main limitations**
+
+- Full fills, unlimited liquidity and constant modeled costs; no order book, market
+  impact, partial fills, funding or taxes.
+- Drawdown sees only candle opens and closes, and financial arithmetic uses floats.
+- Finite RSI/EMA/MACD/ATR initialization is an approximation, and seed policies
+  differ between commands.
+- Exact replay needs a fixed `evaluation_end` and identical candles. Binance can
+  revise history; the recorded SHA256 detects changes but cannot recover prices.
+- Natural-language parsing can be wrong even when validation succeeds; review the
+  parsed configuration before relying on results.
+- Unsupported: stop loss, take profit, leverage, shorts, crossover events, multiple
+  symbols, automatic optimization, live trading and predictions.
+
+See [Parser defaults and API boundaries](../ARCHITECTURE.md#parser-defaults-and-api-boundaries),
+[CLI environment configuration](../ARCHITECTURE.md#cli-environment-configuration) and
+[Reproducibility and limitations](../ARCHITECTURE.md#reproducibility-and-limitations).
