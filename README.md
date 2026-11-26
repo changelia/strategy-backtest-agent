@@ -199,6 +199,7 @@ future profitability or robustness. There is no automatic optimization or select
 
 For maintainers: [Contributing](https://github.com/changelia/strategy-backtest-agent/blob/main/CONTRIBUTING.md),
 [Architecture](https://github.com/changelia/strategy-backtest-agent/blob/main/ARCHITECTURE.md),
+[How it works](https://github.com/changelia/strategy-backtest-agent/blob/main/docs/how-it-works.md),
 [Release procedure](https://github.com/changelia/strategy-backtest-agent/blob/main/RELEASE.md),
 and [MIT license](https://github.com/changelia/strategy-backtest-agent/blob/main/LICENSE).
 GitHub README edits do not update descriptions embedded in distributions already uploaded to PyPI.

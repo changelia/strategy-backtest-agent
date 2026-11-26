@@ -8,6 +8,8 @@ this repository, and to the people who run them. When in doubt,
 ## Read first
 
 - [README.md](README.md): what the package does for users.
+- [docs/how-it-works.md](docs/how-it-works.md): a short overview of the engine and
+  data flow; read it before ARCHITECTURE.md.
 - [ARCHITECTURE.md](ARCHITECTURE.md): the design record for the engine, the rule
   language, every research mode and the reports.
 - [docs/](docs/): user guides (`PYTHON_API.md`, `CLI.md`, `RESEARCH_GUIDE.md`) and
