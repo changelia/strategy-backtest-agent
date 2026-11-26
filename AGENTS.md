@@ -77,9 +77,12 @@ this repository, and to the people who run them. When in doubt,
   72 characters. Types: `feat`, `fix`, `refactor`, `test`, `docs`, `ci`,
   `build`, `chore`, `perf`. Scopes: `engine`, `rules`, `data`, `research`,
   `reports`, `client`, `cli`, `ai`, `docs`, `ci`, `build`.
-- No AI co-author trailers and no AI attribution lines in commits.
-- Do not merge into `main`, tag, change the package version or publish. The
-  maintainer does that.
+- No AI co-author trailers and no AI attribution lines in commits or pull
+  requests.
+- Push the branch and open a pull request to `main` with `gh pr create`,
+  filling in the template from `.github/pull_request_template.md`. Never merge
+  it, enable auto-merge, tag, change the package version or publish; the
+  maintainer reviews and merges with a merge commit.
 
 ## Code style
 

@@ -23,8 +23,10 @@ changed lines at most (lock files excluded), with its tests in the same commit; 
 commit passes all checks. Write messages as Conventional Commits:
 `type(scope): subject`, imperative, lowercase, at most 72 characters, for example
 `fix(reports): escape the footer renderer version`. Never mix a refactor and a
-feature. Describe the problem, resulting behavior and validation in the branch's
-review notes. Add deterministic tests for meaningful behavior changes. Unit tests
+feature. Changes reach `main` through a pull request that follows
+[the template](.github/pull_request_template.md); CI runs the checks and the packaging
+validation on pull requests to `main`, and the maintainer merges with a merge commit
+(no squash, no rebase). Add deterministic tests for meaningful behavior changes. Unit tests
 must not access the network; use mocked provider responses. Preserve next-candle
 execution and mathematical consistency between fees, PnL, and portfolio balances.
 
